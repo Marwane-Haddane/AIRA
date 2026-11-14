@@ -1,0 +1,4360 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RoboGenius | Dobot Magician Classic — 3D Digital Twin & AI Portrait Studio</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <!-- Three.js r128 + OrbitControls + GLTFExporter -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            rg: {
+              bg: '#070b12',
+              panel: '#0d1421',
+              card: '#121b2d',
+              border: '#1e2d47',
+              cyan: '#00e5ff',
+              blue: '#3b82f6',
+              amber: '#f59e0b',
+              emerald: '#10b981',
+              rose: '#f43f5e'
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
+    body {
+      background-color: #070b12;
+      color: #e2e8f0;
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090e17;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e2d47;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #00e5ff;
+    }
+
+    /* Range Sliders */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 5px;
+      background: #1a263d;
+      border-radius: 999px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #00e5ff;
+      cursor: pointer;
+      border: 2px solid #070b12;
+      box-shadow: 0 0 8px rgba(0, 229, 255, 0.7);
+      transition: transform 0.15s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    /* 3D Floating HUD Labels */
+    .hud-label {
+      position: absolute;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(9, 15, 26, 0.85);
+      border: 1px solid rgba(0, 229, 255, 0.55);
+      color: #00e5ff;
+      white-space: nowrap;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 229, 255, 0.15);
+      backdrop-filter: blur(4px);
+      transition: opacity 0.15s ease;
+      z-index: 15;
+    }
+    .hud-label.amber {
+      border-color: rgba(245, 158, 11, 0.65);
+      color: #fbbf24;
+    }
+    .hud-label.emerald {
+      border-color: rgba(16, 185, 129, 0.65);
+      color: #34d399;
+    }
+
+    /* Glassmorphism overlays */
+    .glass-panel {
+      background: rgba(13, 20, 33, 0.84);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(30, 45, 71, 0.85);
+    }
+    .neon-glow {
+      box-shadow: 0 0 18px rgba(0, 229, 255, 0.22);
+    }
+  </style>
+</head>
+<body class="h-screen w-screen flex flex-col overflow-hidden">
+
+  <!-- ==================== TOP COMMAND HEADER ==================== -->
+  <header class="h-14 shrink-0 bg-rg-panel/95 border-b border-rg-border px-4 py-2 flex items-center justify-between gap-3 z-30">
+    <!-- Left Brand -->
+    <div class="flex items-center gap-3 shrink-0">
+      <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 font-extrabold text-slate-950 text-sm tracking-tighter">
+        RG
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-sm tracking-wide text-white">ROBOGENIUS</span>
+          <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">ENSA FES • AI PORTRAIT STUDIO</span>
+        </div>
+        <p class="text-[11px] text-slate-400 hidden sm:block">Dobot Magician Classic • 4-Axis Digital Twin, Live Webcam & Ultra-Minimal SVG Plotter</p>
+      </div>
+    </div>
+
+    <!-- Center Workspace Layout Switcher (Split Studio + 3D Twin vs Full Views) -->
+    <div class="flex items-center bg-rg-bg p-1 rounded-xl border border-rg-border shadow-inner gap-1">
+      <button id="layoutBtn-split" onclick="setWorkspaceLayout('split')" class="px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20">
+        <i class="fa-solid fa-table-columns"></i> Split: Webcam SVG + 3D Dobot
+      </button>
+      <button id="layoutBtn-studio" onclick="setWorkspaceLayout('studio')" class="px-3 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 text-slate-300 hover:text-white">
+        <i class="fa-solid fa-camera-retro text-cyan-400"></i> Full AI Studio
+      </button>
+      <button id="layoutBtn-twin" onclick="setWorkspaceLayout('twin')" class="px-3 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 text-slate-300 hover:text-white">
+        <i class="fa-solid fa-cube text-emerald-400"></i> Full 3D Robot Twin
+      </button>
+    </div>
+
+    <!-- Right Quick Actions & Export -->
+    <div class="flex items-center gap-2">
+      <!-- Visual Style Switcher -->
+      <div class="hidden md:flex items-center bg-rg-bg p-0.5 rounded-lg border border-rg-border">
+        <button id="btnModeCAD" onclick="setVisualTheme('cad')" class="px-2.5 py-1 rounded-md text-xs font-medium transition flex items-center gap-1.5 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+          <i class="fa-solid fa-cube"></i> CAD Twin
+        </button>
+        <button id="btnModeStudio" onclick="setVisualTheme('studio')" class="px-2.5 py-1 rounded-md text-xs font-medium transition flex items-center gap-1.5 text-slate-400 hover:text-white">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Studio Neon
+        </button>
+      </div>
+
+      <!-- Master Hidden File Input for Photo & SVG Upload -->
+      <input type="file" id="masterPhotoFileInput" accept="image/png,image/jpeg,image/webp,image/bmp,image/svg+xml,.svg" class="hidden" onchange="handlePhotoFileUpload(event)" />
+
+      <!-- Prominent Top-Bar Upload Photo / SVG Button -->
+      <button onclick="triggerPhotoFileDialog()" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 shadow-lg shadow-amber-500/20 transition" title="Upload Portrait Photo (.JPG, .PNG, .WEBP) or .SVG File (or Paste with Ctrl+V)">
+        <i class="fa-solid fa-cloud-arrow-up"></i> 📂 Upload Photo / SVG
+      </button>
+
+      <!-- Download Minimal .SVG -->
+      <button onclick="downloadCurrentSVG()" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-semibold text-xs flex items-center gap-1.5 transition" title="Download Minimal Plot-Ready SVG">
+        <i class="fa-solid fa-bezier-curve"></i> Export .SVG
+      </button>
+
+      <!-- Download 3D Model (.GLB) -->
+      <button onclick="exportGLBModel()" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-semibold text-xs flex items-center gap-1.5 shadow-lg shadow-cyan-500/20 transition">
+        <i class="fa-solid fa-download"></i> .GLB
+      </button>
+
+      <!-- Blender / Code Modal Button -->
+      <button onclick="toggleExportModal(true)" class="px-2.5 py-1.5 rounded-lg bg-rg-card hover:bg-slate-800 text-slate-200 border border-rg-border text-xs font-medium flex items-center gap-1.5 transition" title="Get Blender Python Script & Dobot SDK Code">
+        <i class="fa-solid fa-code text-cyan-400"></i> SDK / Blender
+      </button>
+    </div>
+  </header>
+
+  <!-- Toast Notification Banner -->
+  <div id="toastBanner" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 hidden items-center gap-2.5 px-4 py-2 rounded-xl bg-slate-900/95 border border-cyan-400/50 text-cyan-200 text-xs font-medium shadow-2xl backdrop-blur-md">
+    <i class="fa-solid fa-circle-check text-emerald-400"></i>
+    <span id="toastBannerText">Ready</span>
+  </div>
+
+  <!-- Full-Window Drag & Drop Photo / SVG Overlay -->
+  <div id="globalDropOverlay" class="fixed inset-0 z-50 hidden bg-slate-950/85 backdrop-blur-md flex-col items-center justify-center p-6 pointer-events-none">
+    <div class="border-2 border-dashed border-cyan-400 rounded-3xl p-10 max-w-lg w-full text-center bg-rg-card/90 shadow-2xl neon-glow flex flex-col items-center gap-3">
+      <div class="w-16 h-16 rounded-2xl bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center text-cyan-300 text-3xl animate-bounce">
+        <i class="fa-solid fa-file-arrow-up"></i>
+      </div>
+      <h3 class="text-lg font-extrabold text-white">Drop Portrait Photo or .SVG to Vectorize</h3>
+      <p class="text-xs text-slate-300">Supports <span class="text-cyan-300 font-mono">.JPG, .PNG, .WEBP, .BMP, .SVG</span> • Automatically converts to ultra-minimal centerline strokes for the 3D Dobot Magician</p>
+    </div>
+  </div>
+
+  <!-- ==================== MAIN WORKSPACE AREA ==================== -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- ==================== DOCKED AI PORTRAIT & ULTRA-MINIMAL SVG STUDIO ==================== -->
+    <section id="dockedStudioPane" class="w-full lg:w-[540px] xl:w-[600px] shrink-0 bg-rg-panel border-r border-rg-border flex flex-col justify-between z-20 overflow-y-auto">
+      <div class="p-3.5 space-y-3.5">
+
+        <!-- Studio Header + 1-Click Action Banner -->
+        <div class="bg-gradient-to-r from-cyan-950/70 via-rg-card to-emerald-950/50 p-3 rounded-xl border border-cyan-500/40 space-y-2.5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold">PHOTO UPLOAD & LIVE WEBCAM → SVG</span>
+                <span id="webcamStatusPill" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">Ready</span>
+              </div>
+              <h2 class="text-xs sm:text-sm font-extrabold text-white mt-1">AI Portrait Capture, Photo Upload & Minimal Dobot Vectorizer</h2>
+            </div>
+
+            <label class="flex items-center gap-1.5 text-[10px] font-mono text-emerald-300 bg-slate-900/80 px-2.5 py-1 rounded-lg border border-emerald-500/30 cursor-pointer" title="Automatically start 3D Dobot plotting as soon as a photo or SVG is uploaded">
+              <input type="checkbox" id="chkAutoDrawOnUpload" checked class="accent-emerald-400" />
+              <span>Auto-Draw on Upload</span>
+            </label>
+          </div>
+
+          <!-- Dual Primary Hero CTA Buttons: Upload Photo vs Live Snap -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button onclick="triggerPhotoFileDialog()" class="py-2 px-3 rounded-xl bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 transition transform hover:scale-[1.01]">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+              <span>📂 UPLOAD PHOTO → AUTO-DRAW</span>
+            </button>
+            <button onclick="oneClickSnapAndDrawOnDobot()" class="py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500 hover:from-emerald-300 hover:to-blue-400 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/25 transition transform hover:scale-[1.01]">
+              <i class="fa-solid fa-camera"></i>
+              <span>📸 SNAP CAM → SVG → DRAW</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 3-STAGE LIVE PIPELINE CARDS: [01 UPLOAD/WEBCAM] -> [02 CANNY NMS SKELETON] -> [03 INTERACTIVE MINIMAL SVG] -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+
+          <!-- STAGE 01: PHOTO UPLOAD / DRAG-DROP / LIVE WEBCAM CAPTURE CANVAS -->
+          <div id="stage1DropCard" class="bg-rg-card p-2.5 rounded-xl border border-rg-border transition-all flex flex-col justify-between space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold text-white flex items-center gap-1.5">
+                <span class="w-4 h-4 rounded-full bg-cyan-500 text-slate-950 font-mono text-[10px] font-extrabold flex items-center justify-center">1</span>
+                Upload / Cam
+              </span>
+              <label class="flex items-center gap-1 text-[10px] font-mono text-cyan-300 cursor-pointer" title="Mask out noisy room background behind face">
+                <input type="checkbox" id="chkOvalMask" checked onchange="onMinimalParamsChange()" class="accent-cyan-400" />
+                Face Mask
+              </label>
+            </div>
+
+            <!-- Hidden HTML5 Video Element that feeds the live Capture Canvas -->
+            <video id="liveWebcamVideo" autoplay playsinline muted class="hidden"></video>
+
+            <!-- Visible Live Capture & Interactive Photo Pan/Zoom Canvas -->
+            <div class="relative w-full aspect-square rounded-lg overflow-hidden bg-slate-950 border border-cyan-500/40 shadow-inner group">
+              <canvas id="camCaptureCanvas" width="320" height="320" class="w-full h-full object-cover block cursor-grab active:cursor-grabbing" title="Drag to pan uploaded photo • Scroll wheel to zoom • Or drop an image file here!"></canvas>
+
+              <!-- Live Recording Indicator -->
+              <div id="liveCamIndicator" class="hidden absolute top-1.5 left-1.5 px-2 py-0.5 rounded-full bg-rose-600/90 text-white font-mono text-[9px] font-bold flex items-center gap-1 shadow pointer-events-none">
+                <span class="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span> LIVE CAM
+              </div>
+
+              <!-- Uploaded Photo Active Badge -->
+              <div id="uploadedPhotoBadge" class="hidden absolute top-1.5 left-1.5 right-1.5 px-2 py-0.5 rounded bg-amber-500/90 text-slate-950 font-mono text-[9px] font-extrabold flex items-center justify-between shadow pointer-events-none">
+                <span id="uploadedPhotoName" class="truncate">UPLOADED PHOTO</span>
+                <span id="uploadedPhotoDims" class="shrink-0 ml-1">256×256</span>
+              </div>
+
+              <!-- Interactive Pan/Zoom/Rotate Mini Toolbar over Canvas Bottom -->
+              <div class="absolute bottom-1.5 inset-x-1.5 flex items-center justify-between gap-1 bg-slate-950/85 backdrop-blur-sm px-1.5 py-1 rounded border border-slate-700/80 text-[9px] font-mono">
+                <button onclick="rotatePhoto90()" class="px-1.5 py-0.5 rounded bg-rg-card hover:bg-slate-800 text-cyan-300 transition" title="Rotate Photo 90°">
+                  <i class="fa-solid fa-rotate-right"></i> 90°
+                </button>
+                <button onclick="togglePhotoFlip()" class="px-1.5 py-0.5 rounded bg-rg-card hover:bg-slate-800 text-cyan-300 transition" title="Flip / Mirror Horizontal">
+                  <i class="fa-solid fa-left-right"></i> Flip
+                </button>
+                <button onclick="resetPhotoFraming()" class="px-1.5 py-0.5 rounded bg-rg-card hover:bg-slate-800 text-slate-300 transition" title="Reset Zoom & Pan">
+                  Reset
+                </button>
+              </div>
+            </div>
+
+            <!-- Upload Photo + Webcam Controls -->
+            <div class="space-y-1.5">
+              <!-- Prominent Upload Photo / Dropzone Button inside Stage 1 -->
+              <button onclick="triggerPhotoFileDialog()" class="w-full py-1.5 px-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition shadow-sm" title="Click to browse, Drag & Drop a file, or press Ctrl+V to paste an image">
+                <i class="fa-solid fa-folder-open"></i> 📂 Upload Photo / SVG (or Ctrl+V)
+              </button>
+
+              <!-- Zoom Slider for Framing Uploaded Portrait -->
+              <div class="flex items-center gap-1.5 bg-rg-bg px-2 py-1 rounded border border-rg-border">
+                <span class="text-[9px] font-mono text-slate-400 shrink-0"><i class="fa-solid fa-magnifying-glass-plus text-cyan-400"></i> ZOOM</span>
+                <input type="range" id="sliderPhotoZoom" min="0.8" max="2.8" step="0.05" value="1.0" oninput="onPhotoFramingSliderInput()" />
+                <span id="valPhotoZoom" class="text-[9px] font-mono text-cyan-300 w-7 text-right">1.0x</span>
+              </div>
+
+              <!-- Webcam Open & Snap Row -->
+              <div class="grid grid-cols-2 gap-1.5">
+                <button id="btnToggleWebcam" onclick="toggleWebcamStream()" class="py-1.5 px-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-[11px] font-bold flex items-center justify-center gap-1 transition">
+                  <i class="fa-solid fa-video"></i> <span id="btnToggleWebcamText">Open Cam</span>
+                </button>
+                <button id="btnSnapFrame" onclick="snapWebcamFrameNow()" class="py-1.5 px-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-[11px] font-extrabold flex items-center justify-center gap-1 transition shadow">
+                  <i class="fa-solid fa-camera"></i> Snap Frame
+                </button>
+              </div>
+
+              <!-- Camera Device Selector -->
+              <div class="flex gap-1">
+                <select id="cameraDeviceSelect" onchange="switchCameraDevice(this.value)" class="w-full bg-rg-bg text-slate-300 font-mono text-[10px] px-1.5 py-1 rounded border border-rg-border outline-none truncate" title="Select Camera Device">
+                  <option value="">Default Front Camera</option>
+                </select>
+              </div>
+
+              <!-- 3 Built-In Test Portraits -->
+              <div class="grid grid-cols-3 gap-1 pt-0.5">
+                <button onclick="loadProceduralPortrait('male')" class="py-1 px-1.5 rounded bg-rg-bg hover:bg-slate-800 text-slate-300 border border-rg-border text-[9px] font-mono transition">
+                  👨 Male
+                </button>
+                <button onclick="loadProceduralPortrait('female')" class="py-1 px-1.5 rounded bg-rg-bg hover:bg-slate-800 text-slate-300 border border-rg-border text-[9px] font-mono transition">
+                  👩 Female
+                </button>
+                <button onclick="loadProceduralPortrait('glasses')" class="py-1 px-1.5 rounded bg-rg-bg hover:bg-slate-800 text-slate-300 border border-rg-border text-[9px] font-mono transition">
+                  🧔 Glasses
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- STAGE 02: CANNY NMS + 1-PX CENTERLINE SKELETON PREVIEW -->
+          <div class="bg-rg-card p-2.5 rounded-xl border border-rg-border flex flex-col justify-between space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold text-white flex items-center gap-1.5">
+                <span class="w-4 h-4 rounded-full bg-blue-500 text-slate-950 font-mono text-[10px] font-extrabold flex items-center justify-center">2</span>
+                1px Centerlines
+              </span>
+              <span id="engineActiveBadge" class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-500/30">
+                Canny NMS
+              </span>
+            </div>
+
+            <div class="relative w-full aspect-square rounded-lg overflow-hidden bg-white border border-slate-700 shadow-inner">
+              <canvas id="skeletonPreviewCanvas" width="320" height="320" class="w-full h-full object-contain block"></canvas>
+              <!-- Optional HF Cloud Spinner -->
+              <div id="hfCloudSpinner" class="hidden absolute inset-0 bg-slate-950/85 backdrop-blur-sm flex-col items-center justify-center text-center p-3">
+                <i class="fa-solid fa-circle-notch fa-spin text-xl text-fuchsia-400 mb-1.5"></i>
+                <span id="hfSpinnerText" class="text-[10px] font-semibold text-white">Generating detailed line art…</span>
+                <span class="text-[9px] font-mono text-slate-400 mt-1">Informative Drawings · local CPU</span>
+              </div>
+            </div>
+
+            <!-- Minimalism Preset Buttons -->
+            <div class="space-y-1.5">
+              <div class="text-[10px] font-mono text-slate-400 flex justify-between">
+                <span>MINIMALISM PRESET:</span>
+                <span class="text-cyan-400">Zero Double-Lines</span>
+              </div>
+              <div class="grid grid-cols-3 gap-1">
+                <button id="minPreset-ultra" onclick="applyMinimalismPreset('ultra')" class="py-1.5 px-1 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold transition" title="Ultra-Minimal (~28 Strokes) — Fastest Dobot Plot">
+                  ⚡ Ultra (28)
+                </button>
+                <button id="minPreset-clean" onclick="applyMinimalismPreset('clean')" class="py-1.5 px-1 rounded-lg bg-rg-bg text-slate-300 border border-rg-border text-[10px] font-medium transition" title="Clean Balanced Portrait (~48 Strokes)">
+                  ✨ Clean (48)
+                </button>
+                <button id="minPreset-detail" onclick="applyMinimalismPreset('detail')" class="py-1.5 px-1 rounded-lg bg-rg-bg text-slate-300 border border-rg-border text-[10px] font-medium transition" title="Detailed Portrait (~80 Strokes)">
+                  🎨 Detail (80)
+                </button>
+              </div>
+              <button id="btnAiDetailStage" onclick="generateDetailedLineArt()" class="w-full py-1.5 px-2 rounded-lg bg-fuchsia-500/20 hover:bg-fuchsia-500/30 text-fuchsia-300 border border-fuchsia-500/40 text-[10px] font-bold flex items-center justify-center gap-1.5 transition" title="AI line-art with detailed hair, eyes, beard and clothing contours">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> ✨ Generate Detailed Line Art
+              </button>
+              <button onclick="runMinimalSVGPipeline()" class="w-full py-1.5 px-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 text-[10px] font-bold flex items-center justify-center gap-1.5 transition">
+                <i class="fa-solid fa-bezier-curve"></i> Re-Trace Quick Canny
+              </button>
+            </div>
+          </div>
+
+          <!-- STAGE 03: INTERACTIVE MINIMAL SVG (CLICK ANY STROKE TO ERASE!) -->
+          <div class="bg-rg-card p-2.5 rounded-xl border border-emerald-500/40 flex flex-col justify-between space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold text-emerald-300 flex items-center gap-1.5">
+                <span class="w-4 h-4 rounded-full bg-emerald-400 text-slate-950 font-mono text-[10px] font-extrabold flex items-center justify-center">3</span>
+                Minimal SVG
+              </span>
+              <label class="flex items-center gap-1 text-[10px] font-mono text-amber-300 cursor-pointer">
+                <input type="checkbox" id="chkShowTravelJumps" checked onchange="renderMinimalSVGInteractive()" class="accent-amber-400" />
+                Jumps
+              </label>
+            </div>
+
+            <!-- Interactive SVG Host: Clicking a path deletes it! -->
+            <div id="interactiveSvgContainer" class="relative w-full aspect-square rounded-lg overflow-hidden bg-white border border-emerald-500/40 shadow-inner cursor-pointer" title="Click any stroke line to erase it from the Dobot plot!">
+              <!-- Populated dynamically with interactive SVG -->
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="text-[9px] font-mono text-slate-400 text-center bg-rg-bg py-1 px-1.5 rounded border border-rg-border">
+                💡 <strong class="text-emerald-300">Click any stroke</strong> above to erase unwanted lines!
+              </div>
+              <div class="grid grid-cols-2 gap-1.5">
+                <button onclick="undoLastErasedStroke()" id="btnUndoErase" disabled class="py-1.5 px-2 rounded-lg bg-rg-bg hover:bg-slate-800 disabled:opacity-40 text-slate-300 border border-rg-border text-[10px] font-semibold flex items-center justify-center gap-1 transition">
+                  <i class="fa-solid fa-rotate-left"></i> Undo Erase
+                </button>
+                <button onclick="sendMinimalSVGToDobotNow()" class="py-1.5 px-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-[10px] font-extrabold flex items-center justify-center gap-1 transition shadow">
+                  <i class="fa-solid fa-robot"></i> Plot SVG Now
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ULTRA-MINIMALIST SVG OPTIMIZER SLIDERS (DESIGNED FOR FAST DOBOT PLOTTING) -->
+        <div class="bg-rg-card p-3 rounded-xl border border-rg-border space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-white flex items-center gap-1.5">
+              <i class="fa-solid fa-sliders text-cyan-400"></i> Minimalist SVG Simplification Controls (Dobot Optimizer)
+            </span>
+            <span id="minimalTelemetrySummary" class="text-[10px] font-mono text-emerald-400 font-bold">32 strokes • 210 pts • ~14s plot</span>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <!-- Control 1: MAX STROKES CAP (Keeps only the most important N facial contours) -->
+            <div class="bg-rg-bg p-2 rounded-lg border border-rg-border space-y-1">
+              <div class="flex justify-between text-[10px] font-mono">
+                <span class="text-slate-300 font-semibold">MAX STROKES</span>
+                <span id="valMaxStrokes" class="text-cyan-400 font-bold">34</span>
+              </div>
+              <input type="range" id="sliderMaxStrokes" min="12" max="110" step="2" value="34" oninput="onMinimalParamsChange()" />
+              <div class="text-[9px] text-slate-500">Caps total robot pen lifts</div>
+            </div>
+
+            <!-- Control 2: RDP Polygon Simplification (Fewer vertices, smoother curves) -->
+            <div class="bg-rg-bg p-2 rounded-lg border border-rg-border space-y-1">
+              <div class="flex justify-between text-[10px] font-mono">
+                <span class="text-slate-300 font-semibold">SIMPLIFY (RDP)</span>
+                <span id="valRdpEps" class="text-cyan-400 font-bold">2.2 px</span>
+              </div>
+              <input type="range" id="sliderRdpEps" min="0.8" max="5.0" step="0.2" value="2.2" oninput="onMinimalParamsChange()" />
+              <div class="text-[9px] text-slate-500">Higher = ultra-clean lines</div>
+            </div>
+
+            <!-- Control 3: Edge Threshold (Detail Filter) -->
+            <div class="bg-rg-bg p-2 rounded-lg border border-rg-border space-y-1">
+              <div class="flex justify-between text-[10px] font-mono">
+                <span class="text-slate-300 font-semibold">EDGE FILTER</span>
+                <span id="valCannyHigh" class="text-cyan-400 font-bold">52</span>
+              </div>
+              <input type="range" id="sliderCannyHigh" min="20" max="95" step="1" value="52" oninput="onMinimalParamsChange()" />
+              <div class="text-[9px] text-slate-500">Higher = boldest features only</div>
+            </div>
+
+            <!-- Control 4: Collinear Gap Stitch Distance (Merges broken segments) -->
+            <div class="bg-rg-bg p-2 rounded-lg border border-rg-border space-y-1">
+              <div class="flex justify-between text-[10px] font-mono">
+                <span class="text-slate-300 font-semibold">STITCH GAPS</span>
+                <span id="valStitchGap" class="text-cyan-400 font-bold">7 px</span>
+              </div>
+              <input type="range" id="sliderStitchGap" min="0" max="16" step="1" value="7" oninput="onMinimalParamsChange()" />
+              <div class="text-[9px] text-slate-500">Joins nearby stroke ends</div>
+            </div>
+          </div>
+
+          <!-- Pre-processing Brightness / Contrast / Smoothing Row -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t border-rg-border">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] font-mono text-slate-400 shrink-0">BRIGHT:</span>
+              <input type="range" id="sliderCamBrightness" min="-50" max="50" step="2" value="0" oninput="onMinimalParamsChange()" />
+              <span id="valCamBrightness" class="text-[10px] font-mono text-cyan-300 w-7">0</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] font-mono text-slate-400 shrink-0">CONTRAST:</span>
+              <input type="range" id="sliderCamContrast" min="-30" max="60" step="2" value="18" oninput="onMinimalParamsChange()" />
+              <span id="valCamContrast" class="text-[10px] font-mono text-cyan-300 w-7">+18</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] font-mono text-slate-400 shrink-0">SMOOTH:</span>
+              <input type="range" id="sliderSmoothPass" min="1" max="4" step="1" value="2" oninput="onMinimalParamsChange()" />
+              <span id="valSmoothPass" class="text-[10px] font-mono text-cyan-300 w-6">2x</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] font-mono text-slate-400 shrink-0">MIN LEN:</span>
+              <input type="range" id="sliderMinPathLen" min="4" max="28" step="1" value="10" oninput="onMinimalParamsChange()" />
+              <span id="valMinPathLen" class="text-[10px] font-mono text-cyan-300 w-8">10px</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- LOCAL AI LINE ART + MODEL LINKS + VECTOR PRESETS ACCORDION -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <!-- Local AI Line Art Card (no API key, runs on this PC) -->
+          <div class="bg-rg-card p-3 rounded-xl border border-fuchsia-500/30 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-white flex items-center gap-1.5">
+                <i class="fa-solid fa-wand-magic-sparkles text-fuchsia-400"></i> Local AI Line Art
+              </span>
+              <span id="aiEngineStatus" class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700" title="Start server.py to enable detailed AI portraits">checking…</span>
+            </div>
+
+            <p class="text-[10px] text-slate-400 leading-snug">
+              Photo → detailed hair, eyes, beard &amp; clothing contours. Runs locally with the
+              Informative Drawings ONNX model — no API key, no cloud upload.
+            </p>
+
+            <div class="flex gap-1.5">
+              <select id="aiDetailLevel" class="flex-1 bg-rg-bg border border-rg-border rounded-lg px-2 py-1 font-mono text-[10px] text-fuchsia-200 outline-none">
+                <option value="fast">Fast · 640 px · ~150 strokes</option>
+                <option value="balanced" selected>Balanced · 768 px · ~210 strokes</option>
+                <option value="max">Maximum · 896 px · ~270 strokes</option>
+              </select>
+              <button id="btnGenerateLineArt" onclick="generateDetailedLineArt()" class="px-2.5 py-1 rounded-lg bg-fuchsia-500/20 hover:bg-fuchsia-500/30 text-fuchsia-300 border border-fuchsia-500/40 text-[10px] font-bold shrink-0 transition" title="Generate detailed plotter strokes from the framed photo">
+                ✨ Generate
+              </button>
+            </div>
+
+            <div class="flex flex-wrap gap-1 text-[9px] font-mono pt-0.5">
+              <a href="https://huggingface.co/rocca/informative-drawings-line-art-onnx" target="_blank" rel="noopener noreferrer" class="px-1.5 py-0.5 rounded bg-rg-bg text-fuchsia-300 border border-rg-border hover:border-fuchsia-400">Model: Informative Drawings ↗</a>
+              <a href="https://huggingface.co/spaces/carolineec/informativedrawings" target="_blank" rel="noopener noreferrer" class="px-1.5 py-0.5 rounded bg-rg-bg text-cyan-300 border border-rg-border hover:border-cyan-400">Original Demo ↗</a>
+            </div>
+
+            <div class="text-[9px] font-mono text-slate-500 bg-rg-bg rounded px-1.5 py-1 border border-rg-border">
+              Server: <code class="text-cyan-300">.venv\Scripts\python.exe "svg gen\server.py"</code>
+            </div>
+          </div>
+
+          <!-- Classic Calibration Presets & 2D Freehand Pad -->
+          <div class="bg-rg-card p-3 rounded-xl border border-rg-border space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-white flex items-center gap-1.5">
+                <i class="fa-solid fa-compass-drafting text-cyan-400"></i> Built-In Vector Presets
+              </span>
+              <span id="activePresetLabel" class="text-[10px] font-mono text-cyan-400">Minimal Portrait</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-1.5">
+              <button onclick="loadPlotPreset('portrait')" id="preset-portrait" class="preset-btn px-2 py-1.5 rounded-lg border border-cyan-500/40 bg-cyan-500/10 text-left text-[10px] font-semibold text-white transition">
+                01. Reference Face
+              </button>
+              <button onclick="loadPlotPreset('rose')" id="preset-rose" class="preset-btn px-2 py-1.5 rounded-lg border border-rg-border bg-rg-bg text-left text-[10px] font-medium text-slate-300 transition">
+                02. Spirograph Rose
+              </button>
+              <button onclick="loadPlotPreset('zellige')" id="preset-zellige" class="preset-btn px-2 py-1.5 rounded-lg border border-rg-border bg-rg-bg text-left text-[10px] font-medium text-slate-300 transition">
+                03. Fes Zellige Star
+              </button>
+              <button onclick="loadPlotPreset('logo')" id="preset-logo" class="preset-btn px-2 py-1.5 rounded-lg border border-rg-border bg-rg-bg text-left text-[10px] font-medium text-slate-300 transition">
+                04. RG Calibration
+              </button>
+            </div>
+
+            <!-- Mini 2D Paper Mirror Canvas -->
+            <div class="flex items-center gap-2 pt-0.5">
+              <canvas id="paperPreview2D" width="256" height="256" class="w-12 h-12 rounded border border-slate-600 bg-white cursor-crosshair shrink-0" title="Drag here to freehand draw with the 3D Dobot"></canvas>
+              <div class="text-[10px] text-slate-400 leading-tight">
+                <strong class="text-slate-200 block">Live 2D Paper Sheet</strong>
+                Drag on mini-sheet to freehand jog the 3D Dobot pen!
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Studio Footer -->
+      <div class="p-3 border-t border-rg-border bg-rg-bg/70 flex items-center justify-between text-[11px] font-mono">
+        <span class="text-slate-400">WORKSPACE: <strong class="text-white">130×130 mm</strong></span>
+        <span class="text-emerald-400">PEN Z: 0mm (Draw) / 15mm (Lift)</span>
+      </div>
+    </section>
+
+    <!-- ==================== CENTER MAIN WORKSPACE CONTAINER (3D DOBOT DIGITAL TWIN) ==================== -->
+    <main class="flex-1 relative bg-rg-bg overflow-hidden" id="viewportContainer">
+      <!-- Three.js Canvas Mount (Always active underneath overlays) -->
+      <div id="threeCanvasHost" class="w-full h-full"></div>
+
+      <!-- Floating 3D HUD Badges Container -->
+      <div id="hudOverlayContainer" class="absolute inset-0 pointer-events-none overflow-hidden">
+        <div id="hud-J1" class="hud-label">J1: 0.0°</div>
+        <div id="hud-J2" class="hud-label">J2: 24.0°</div>
+        <div id="hud-J3" class="hud-label">J3: 32.0°</div>
+        <div id="hud-J4" class="hud-label amber">J4 (Pen): 0.0°</div>
+        <div id="hud-TCP" class="hud-label emerald">TCP: (210, 0, 0) mm</div>
+      </div>
+
+      <!-- TOP-LEFT FLOATING TELEMETRY OVERLAY -->
+      <div id="twinTelemetryCard" class="absolute top-4 left-4 pointer-events-none z-20 space-y-2">
+        <div class="glass-panel px-4 py-3 rounded-xl border border-cyan-500/30 shadow-2xl max-w-xs">
+          <div class="text-[10px] font-mono uppercase tracking-widest text-cyan-400 font-semibold">ROBOGENIUS | DIGITAL TWIN</div>
+          <div class="text-lg font-extrabold tracking-tight text-white leading-tight">DOBOT MAGICIAN CLASSIC</div>
+          <div class="text-xs font-mono text-slate-400 mb-2.5">4-AXIS PARALLEL-LINKAGE ROBOTIC ARM</div>
+
+          <div class="space-y-1 font-mono text-xs border-t border-rg-border pt-2">
+            <div class="flex justify-between gap-6">
+              <span class="text-slate-400">REACH / PAYLOAD:</span>
+              <span class="text-white font-semibold">320 mm / 500 g</span>
+            </div>
+            <div class="flex justify-between gap-6">
+              <span class="text-slate-400">PEN STATE:</span>
+              <span id="telemetryPenBadge" class="text-emerald-400 font-semibold">PEN DOWN (DRAWING)</span>
+            </div>
+            <div class="flex justify-between gap-6">
+              <span class="text-slate-400">STATUS:</span>
+              <span id="telemetryStatusBadge" class="text-cyan-400 font-semibold animate-pulse">SIMULATING PLOT</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TOP-RIGHT FLOATING CAMERA & OVERLAY PILLS -->
+      <div id="twinCameraBar" class="absolute top-4 right-4 z-20 flex flex-wrap items-center gap-1.5">
+        <button onclick="setCameraPreset('studio')" class="glass-panel hover:border-cyan-400 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-200 transition flex items-center gap-1.5" title="Match Reference Photo Camera Angle">
+          <i class="fa-solid fa-camera text-cyan-400"></i> Photo Angle
+        </button>
+        <button onclick="setCameraPreset('cad')" class="glass-panel hover:border-cyan-400 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-200 transition flex items-center gap-1.5" title="Match CAD Digital Twin Angle">
+          <i class="fa-solid fa-compass text-blue-400"></i> CAD Isometric
+        </button>
+        <button onclick="setCameraPreset('top')" class="glass-panel hover:border-cyan-400 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-200 transition flex items-center gap-1.5">
+          <i class="fa-solid fa-arrows-to-dot text-emerald-400"></i> Top Paper
+        </button>
+        <button onclick="setCameraPreset('side')" class="glass-panel hover:border-cyan-400 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-200 transition flex items-center gap-1.5">
+          <i class="fa-solid fa-ruler-combined text-amber-400"></i> Side Linkage
+        </button>
+      </div>
+
+      <!-- BOTTOM FLOATING SIMULATION TRANSPORT & OVERLAY TOGGLES BAR -->
+      <div id="twinBottomBar" class="absolute bottom-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-3 pointer-events-none">
+        <!-- Playback Transport Card -->
+        <div class="glass-panel px-4 py-2.5 rounded-xl flex items-center gap-3 pointer-events-auto shadow-2xl border border-rg-border">
+          <button id="btnPlayPause" onclick="togglePlotSimulation()" class="w-9 h-9 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 flex items-center justify-center font-bold shadow-lg shadow-cyan-500/25 transition">
+            <i id="iconPlayPause" class="fa-solid fa-pause"></i>
+          </button>
+          <button onclick="restartPlotSimulation()" class="w-8 h-8 rounded-lg bg-rg-card hover:bg-slate-800 text-slate-300 border border-rg-border flex items-center justify-center text-xs transition" title="Restart Plot from Stroke 1">
+            <i class="fa-solid fa-rotate-left"></i>
+          </button>
+          <button onclick="clearPaperSheet()" class="w-8 h-8 rounded-lg bg-rg-card hover:bg-slate-800 text-rose-400 border border-rg-border flex items-center justify-center text-xs transition" title="Clear Paper Ink">
+            <i class="fa-solid fa-eraser"></i>
+          </button>
+
+          <!-- Progress & Stroke Counter -->
+          <div class="w-44 sm:w-60 space-y-1">
+            <div class="flex justify-between text-[11px] font-mono">
+              <span class="text-slate-300" id="plotProgressLabel">Plotting Portrait...</span>
+              <span class="text-cyan-400 font-semibold" id="plotStrokeCounter">0 / 0 pts</span>
+            </div>
+            <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+              <div id="plotProgressBar" class="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-75" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <!-- Speed Multiplier -->
+          <div class="flex items-center gap-1.5 pl-2 border-l border-rg-border">
+            <span class="text-[10px] font-mono text-slate-400">SPEED</span>
+            <select id="plotSpeedSelect" onchange="setPlotSpeed(this.value)" class="bg-rg-bg text-cyan-300 font-mono text-xs px-2 py-1 rounded border border-rg-border outline-none">
+              <option value="1">1x</option>
+              <option value="2" selected>2x</option>
+              <option value="5">5x</option>
+              <option value="12">12x (Fast)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Right Visual Overlays Toggles -->
+        <div class="glass-panel px-3 py-2 rounded-xl flex items-center gap-2 pointer-events-auto shadow-2xl border border-rg-border text-xs">
+          <button id="toggleBtn-dome" onclick="toggleSceneOverlay('dome')" class="px-2.5 py-1 rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-medium transition flex items-center gap-1.5">
+            <i class="fa-solid fa-globe"></i> 320mm Dome
+          </button>
+          <button id="toggleBtn-hud" onclick="toggleSceneOverlay('hud')" class="px-2.5 py-1 rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-medium transition flex items-center gap-1.5">
+            <i class="fa-solid fa-tags"></i> Joint HUD
+          </button>
+          <button id="toggleBtn-edges" onclick="toggleSceneOverlay('edges')" class="px-2.5 py-1 rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-medium transition flex items-center gap-1.5">
+            <i class="fa-solid fa-border-all"></i> CAD Edges
+          </button>
+          <button id="toggleBtn-toolpath" onclick="toggleSceneOverlay('toolpath')" class="px-2.5 py-1 rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-medium transition flex items-center gap-1.5">
+            <i class="fa-solid fa-bezier-curve"></i> 3D Toolpath
+          </button>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ==================== RIGHT SIDEBAR: IK & JOINT CONTROL PANEL ==================== -->
+    <aside id="rightControlSidebar" class="w-72 xl:w-80 shrink-0 bg-rg-panel border-l border-rg-border hidden xl:flex flex-col justify-between z-20 overflow-y-auto">
+      <div class="p-3.5 space-y-4">
+
+        <!-- CARTESIAN INVERSE KINEMATICS (XYZ) -->
+        <div class="bg-rg-card p-3.5 rounded-xl border border-rg-border space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5">
+              <i class="fa-solid fa-arrows-up-down-left-right text-cyan-400"></i> Cartesian TCP (Inverse Kinematics)
+            </span>
+            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">IK ACTIVE</span>
+          </div>
+
+          <!-- X Coordinate (Forward Reach) -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs font-mono">
+              <span class="text-rose-400 font-semibold">X (Forward Reach)</span>
+              <span id="val-ik-x" class="text-white">210.0 mm</span>
+            </div>
+            <input type="range" id="slider-ik-x" min="135" max="275" step="0.5" value="210" oninput="onCartesianSliderInput()" />
+          </div>
+
+          <!-- Y Coordinate (Lateral Left/Right) -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs font-mono">
+              <span class="text-emerald-400 font-semibold">Y (Lateral Sweep)</span>
+              <span id="val-ik-y" class="text-white">0.0 mm</span>
+            </div>
+            <input type="range" id="slider-ik-y" min="-90" max="90" step="0.5" value="0" oninput="onCartesianSliderInput()" />
+          </div>
+
+          <!-- Z Coordinate (Vertical Pen Height) -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs font-mono">
+              <span class="text-blue-400 font-semibold">Z (Pen Height)</span>
+              <span id="val-ik-z" class="text-white">0.0 mm</span>
+            </div>
+            <input type="range" id="slider-ik-z" min="0" max="65" step="0.5" value="0" oninput="onCartesianSliderInput()" />
+          </div>
+
+          <!-- Quick Pen Up / Pen Down Buttons -->
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button onclick="setPenZState(true)" id="btnPenDown" class="py-1.5 px-2.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+              <i class="fa-solid fa-pen-to-square"></i> Pen Down (0mm)
+            </button>
+            <button onclick="setPenZState(false)" id="btnPenUp" class="py-1.5 px-2.5 rounded-lg bg-rg-bg hover:bg-slate-800 text-slate-300 border border-rg-border text-xs font-medium flex items-center justify-center gap-1.5 transition">
+              <i class="fa-solid fa-arrow-up"></i> Pen Up (15mm)
+            </button>
+          </div>
+        </div>
+
+        <!-- DIRECT 4-AXIS JOINT CONTROL (FORWARD KINEMATICS) -->
+        <div class="bg-rg-card p-3.5 rounded-xl border border-rg-border space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5">
+              <i class="fa-solid fa-gears text-amber-400"></i> 4-Axis Joint Space (J1–J4)
+            </span>
+            <button onclick="homeRobotPose()" class="text-[10px] font-mono text-cyan-400 hover:underline">Home Pose</button>
+          </div>
+
+          <!-- J1 Base Yaw -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs font-mono">
+              <span class="text-slate-300">J1 • Base Turret Yaw</span>
+              <span id="val-j1" class="text-cyan-400">0.0°</span>
+            </div>
+            <input type="range" id="slider-j1" min="-90" max="90" step="0.2" value="0" oninput="onJointSliderInput()" />
+          </div>
+
+          <!-- J2 Rear Arm Pitch -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs font-mono">
+              <span class="text-slate-300">J2 • Rear Arm Shoulder</span>
+              <span id="val-j2" class="text-cyan-400">24.0°</span>
+            </div>
+            <input type="range" id="slider-j2" min="-5" max="70" step="0.2" value="24" oninput="onJointSliderInput()" />
+          </div>
+
+          <!-- J3 Forearm Pitch -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs font-mono">
+              <span class="text-slate-300">J2/J3 • Forearm Parallel Link</span>
+              <span id="val-j3" class="text-cyan-400">32.0°</span>
+            </div>
+            <input type="range" id="slider-j3" min="-15" max="75" step="0.2" value="32" oninput="onJointSliderInput()" />
+          </div>
+
+          <!-- J4 End-Effector Servo Rotation -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs font-mono">
+              <span class="text-slate-300">J4 • Pen Holder Rotation</span>
+              <span id="val-j4" class="text-amber-400">0.0°</span>
+            </div>
+            <input type="range" id="slider-j4" min="-135" max="135" step="1" value="0" oninput="onJointSliderInput()" />
+          </div>
+        </div>
+
+        <!-- PARALLEL LINKAGE KINEMATIC TELEMETRY -->
+        <div class="bg-rg-card p-3.5 rounded-xl border border-rg-border space-y-2">
+          <div class="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5">
+            <i class="fa-solid fa-diagram-project text-blue-400"></i> Parallel Linkage Telemetry
+          </div>
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            The Dobot Magician uses a mechanical 4-bar parallelogram linkage so the pen clamp remains strictly vertical (<code class="text-cyan-300">Pitch = 0.0°</code>) regardless of J2/J3 elevation.
+          </p>
+          <div class="grid grid-cols-2 gap-1.5 pt-1 font-mono text-[11px]">
+            <div class="bg-rg-bg p-2 rounded border border-rg-border">
+              <span class="text-slate-500 block text-[9px]">REAR ARM (L2)</span>
+              <span class="text-slate-200 font-semibold">135.0 mm</span>
+            </div>
+            <div class="bg-rg-bg p-2 rounded border border-rg-border">
+              <span class="text-slate-500 block text-[9px]">FOREARM (L3)</span>
+              <span class="text-slate-200 font-semibold">147.0 mm</span>
+            </div>
+            <div class="bg-rg-bg p-2 rounded border border-rg-border">
+              <span class="text-slate-500 block text-[9px]">TRAVEL DISTANCE</span>
+              <span id="telemetryTravelDist" class="text-cyan-400 font-semibold">0 mm</span>
+            </div>
+            <div class="bg-rg-bg p-2 rounded border border-rg-border">
+              <span class="text-slate-500 block text-[9px]">PEN LIFTS</span>
+              <span id="telemetryPenLifts" class="text-amber-400 font-semibold">0 lifts</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- RECORDED WAYPOINTS CARD -->
+        <div class="bg-rg-card p-3 rounded-xl border border-rg-border space-y-2">
+          <div class="text-xs font-semibold text-white flex items-center justify-between">
+            <span><i class="fa-solid fa-list-ol text-cyan-400 mr-1.5"></i> Teach Waypoints (<span id="waypointCountBadge">4 pts</span>)</span>
+            <button onclick="recordCurrentWaypoint()" class="px-2 py-0.5 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-[10px] font-mono">
+              + Record
+            </button>
+          </div>
+          <div id="waypointListContainer" class="space-y-1 max-h-36 overflow-y-auto pr-1"></div>
+          <div class="pt-1 flex gap-1.5">
+            <button onclick="playWaypoints()" class="flex-1 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-semibold">
+              <i class="fa-solid fa-play mr-1"></i> Replay Sequence
+            </button>
+            <button onclick="clearWaypoints()" class="px-2 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-[11px]">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Emergency Stop / Physical Gate Footer -->
+      <div class="p-3.5 border-t border-rg-border bg-rg-bg/80">
+        <button onclick="emergencyStopSimulation()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-500 hover:to-red-600 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-rose-600/25 flex items-center justify-center gap-2 transition">
+          <i class="fa-solid fa-octagon-xmark text-sm"></i> Emergency Stop (Halt Queue)
+        </button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ==================== MODAL: EXPORT 3D MODEL (.GLB) & BLENDER PYTHON SCRIPT ==================== -->
+  <div id="exportModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-rg-panel border border-rg-border rounded-2xl max-w-3xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+      <!-- Modal Header -->
+      <div class="px-5 py-4 border-b border-rg-border flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+            <i class="fa-solid fa-cubes"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white">Export Articulated 3D Dobot Magician Asset (.GLB & Blender Python)</h3>
+            <p class="text-xs text-slate-400">Ready for your Electron + React/TypeScript Desktop App or Blender 4.x Pipeline</p>
+          </div>
+        </div>
+        <button onclick="toggleExportModal(false)" class="w-8 h-8 rounded-lg bg-rg-card hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Modal Content -->
+      <div class="p-5 overflow-y-auto space-y-4 text-xs">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="p-4 rounded-xl bg-rg-card border border-cyan-500/30 flex flex-col justify-between space-y-3">
+            <div>
+              <div class="text-cyan-400 font-mono text-[10px] uppercase font-semibold">Option 1 • Direct Binary Export</div>
+              <div class="text-sm font-bold text-white mt-0.5">Download Articulated .GLB File</div>
+              <p class="text-slate-400 mt-1 leading-relaxed">
+                Exports the entire Three.js hierarchical robot mesh (`Base` → `J1_Turret` → `J2_RearArm` → `J3_Forearm` → `J4_PenHolder`) with PBR materials as a standard `.glb` binary asset.
+              </p>
+            </div>
+            <button onclick="exportGLBModel()" class="w-full py-2.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold flex items-center justify-center gap-2 transition">
+              <i class="fa-solid fa-download"></i> Download dobot_magician_classic.glb
+            </button>
+          </div>
+
+          <div class="p-4 rounded-xl bg-rg-card border border-rg-border flex flex-col justify-between space-y-3">
+            <div>
+              <div class="text-amber-400 font-mono text-[10px] uppercase font-semibold">Option 2 • Blender 4.x Automation</div>
+              <div class="text-sm font-bold text-white mt-0.5">Blender Python Builder Script (.py)</div>
+              <p class="text-slate-400 mt-1 leading-relaxed">
+                Run this script inside Blender's Scripting tab to procedurally generate the Dobot Magician Classic with named empties, bevel modifiers, and PBR shaders.
+              </p>
+            </div>
+            <button onclick="copyBlenderScript()" id="btnCopyBlender" class="w-full py-2.5 rounded-lg bg-rg-bg hover:bg-slate-800 text-cyan-300 border border-cyan-500/40 font-semibold flex items-center justify-center gap-2 transition">
+              <i class="fa-solid fa-copy"></i> Copy Blender Python Script
+            </button>
+          </div>
+        </div>
+
+        <!-- Code Preview Box -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between text-[11px] font-mono text-slate-400">
+            <span>dobot_blender_generator.py (Blender 3.x / 4.x Python API)</span>
+            <span id="copyConfirmBadge" class="text-emerald-400 hidden"><i class="fa-solid fa-check"></i> Copied to clipboard!</span>
+          </div>
+          <pre id="blenderCodeBlock" class="p-3.5 rounded-xl bg-rg-bg border border-rg-border font-mono text-[11px] text-cyan-200 overflow-x-auto max-h-64 select-all leading-relaxed"># Blender 4.x Procedural Generator: Dobot Magician Classic 4-Axis Digital Twin
+# Run inside Blender -> Scripting Workspace -> New -> Run Script
+import bpy, math
+
+bpy.ops.wm.read_factory_settings(use_empty=True)
+
+def make_mat(name, color, metal=0.0, rough=0.25, clearcoat=0.0):
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Metallic"].default_value = metal
+    bsdf.inputs["Roughness"].default_value = rough
+    if "Coat Weight" in bsdf.inputs:
+        bsdf.inputs["Coat Weight"].default_value = clearcoat
+    return mat
+
+mat_white = make_mat("Dobot_White_ABS", (0.95, 0.96, 0.98, 1), 0.05, 0.22, 0.8)
+mat_black = make_mat("Dobot_Black_Anodized", (0.08, 0.09, 0.11, 1), 0.75, 0.35, 0.0)
+mat_steel = make_mat("Dobot_Steel_Chrome", (0.82, 0.85, 0.88, 1), 0.92, 0.15, 0.0)
+
+# 1. Stationary Base Pedestal (158 x 158 x 50 mm)
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 0.025))
+base = bpy.context.active_object
+base.name = "01_Dobot_Base"
+base.scale = (0.158, 0.158, 0.050)
+bpy.ops.object.modifier_add(type='BEVEL')
+base.modifiers["Bevel"].width = 0.012
+base.modifiers["Bevel"].segments = 5
+base.data.materials.append(mat_white)
+
+# 2. J1 Rotating Turret & Dual NEMA 17 Stepper Motors
+bpy.ops.object.empty_add(type='PLAIN_AXES', location=(0, 0, 0.05))
+j1_pivot = bpy.context.active_object
+j1_pivot.name = "J1_Turret_Yaw_Pivot"
+j1_pivot.parent = base
+
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 0.045))
+turret = bpy.context.active_object
+turret.name = "02_Turret_Housing"
+turret.scale = (0.088, 0.084, 0.090)
+turret.parent = j1_pivot
+turret.data.materials.append(mat_white)
+
+for side in [-1, 1]:
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, side * 0.064, 0.058))
+    motor = bpy.context.active_object
+    motor.name = f"NEMA17_Stepper_{'L' if side<0 else 'R'}"
+    motor.scale = (0.042, 0.046, 0.042)
+    motor.parent = j1_pivot
+    motor.data.materials.append(mat_black)
+
+# 3. J2 Rear Arm (135 mm) + White Upper Armor Shroud
+bpy.ops.object.empty_add(type='PLAIN_AXES', location=(0, 0, 0.075))
+j2_pivot = bpy.context.active_object
+j2_pivot.name = "J2_Shoulder_Pitch_Pivot"
+j2_pivot.parent = j1_pivot
+
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0.0675, 0, 0))
+rear_arm = bpy.context.active_object
+rear_arm.name = "03_Rear_Arm_Linkage"
+rear_arm.scale = (0.135, 0.052, 0.032)
+rear_arm.parent = j2_pivot
+rear_arm.data.materials.append(mat_black)
+
+# 4. J3 Forearm (147 mm) & Parallel Linkage Wrist
+bpy.ops.object.empty_add(type='PLAIN_AXES', location=(0.135, 0, 0))
+j3_pivot = bpy.context.active_object
+j3_pivot.name = "J3_Elbow_Pitch_Pivot"
+j3_pivot.parent = j2_pivot
+
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0.0735, 0, 0))
+forearm = bpy.context.active_object
+forearm.name = "04_Forearm_Linkage"
+forearm.scale = (0.147, 0.044, 0.028)
+forearm.parent = j3_pivot
+forearm.data.materials.append(mat_black)
+
+# 5. J4 Precision Pen Holder End-Effector
+bpy.ops.mesh.primitive_cylinder_add(radius=0.008, depth=0.135, location=(0.175, 0, -0.01))
+pen = bpy.context.active_object
+pen.name = "05_Pen_Tool_EndEffector"
+pen.parent = j3_pivot
+pen.data.materials.append(mat_steel)
+
+print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== APPLICATION JAVASCRIPT & THREE.JS ENGINE ==================== -->
+  <script>
+    /***************************************************************************
+     * 1. PHYSICAL DIMENSIONS & KINEMATIC CONSTANTS OF DOBOT MAGICIAN CLASSIC
+     * Units in Scene: 1 Three.js unit = 100 mm (so 1.35 = 135 mm)
+     ***************************************************************************/
+    const SCALE = 0.01; // 1 mm = 0.01 scene units
+    const ROBOT_SPECS = {
+      baseHeight: 118,   // Z height of J2 Shoulder Pivot from table surface (mm)
+      L2: 135.0,         // Rear Arm (Shoulder J2 to Elbow J3) length in mm
+      L3: 147.0,         // Forearm (Elbow J3 to Wrist Pivot) length in mm
+      wristOffset: 38.0, // Horizontal forward offset from wrist pivot to Pen tip (mm)
+      penDrop: 68.0,     // Vertical drop from wrist pivot down to Pen Nib tip (mm)
+      paperCenterX: 210, // Center of virtual drawing sheet in Robot X (mm)
+      paperCenterY: 0,   // Center of virtual drawing sheet in Robot Y (mm)
+      paperSize: 130     // Drawable square paper size (130 x 130 mm)
+    };
+
+    // Current Robot State
+    const robotState = {
+      j1: 0,     // Base Yaw (deg, -90 to +90)
+      j2: 24,    // Rear Arm Elevation from vertical/horizontal convention (deg)
+      j3: 32,    // Forearm angle (deg)
+      j4: 0,     // Wrist Servo rotation (deg)
+      x: 210,    // Cartesian TCP X (mm)
+      y: 0,      // Cartesian TCP Y (mm)
+      z: 0,      // Cartesian TCP Z (mm, 0 = touching paper)
+      penDown: true,
+      visualTheme: 'cad', // 'cad' or 'studio'
+      overlays: {
+        dome: true,
+        hud: true,
+        edges: true,
+        toolpath: true
+      }
+    };
+
+    // Simulation Plotter State
+    const plotterState = {
+      isPlaying: true,
+      speed: 2,
+      currentPreset: 'portrait',
+      strokes: [],        // Array of polylines: [ [{x, y}, {x, y}, ...], ... ] in normalized [-1, 1] paper coords
+      flatQueue: [],      // Flattened motion sequence: { x, y, z, penDown, strokeIdx }
+      queueIndex: 0,
+      totalTravelMm: 0,
+      penLiftsCount: 0,
+      lastPenPaperPos: null
+    };
+
+    // AI Portrait Studio & Hugging Face State
+    const studioState = {
+      webcamStream: null,
+      hfToken: '',
+      hfModel: 'lllyasviel/sd-controlnet-lineart',
+      engineMode: 'local', // 'local' or 'hf'
+      edgeThreshold: 118,
+      rdpEpsilon: 1.2,
+      minStrokePts: 5,
+      tracedStrokes: [], // Normalized [-0.88, 0.88] strokes generated in AI Portrait Studio
+      svgString: ''
+    };
+
+    // Teach & Playback Waypoints
+    let recordedWaypoints = [
+      { name: 'Origin Safe Above', x: 185, y: -45, z: 18, j4: 0 },
+      { name: 'Paper Center Contact', x: 210, y: 0, z: 0, j4: 0 },
+      { name: 'Outer Reach Check', x: 255, y: 45, z: 12, j4: 15 },
+      { name: 'Home Park Position', x: 205, y: 0, z: 28, j4: 0 }
+    ];
+
+    function showToast(msg) {
+      const b = document.getElementById('toastBanner');
+      const t = document.getElementById('toastBannerText');
+      if (!b || !t) return;
+      t.textContent = msg;
+      b.classList.remove('hidden');
+      b.classList.add('flex');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => {
+        b.classList.add('hidden');
+        b.classList.remove('flex');
+      }, 3400);
+    }
+
+    /***************************************************************************
+     * 2. THREE.JS SCENE, CAMERA, RENDERER & STUDIO LIGHTING SETUP
+     ***************************************************************************/
+    let scene, camera, renderer, controls;
+    let robotRootGroup, j1TurretGroup, j2RearArmGroup, j2ParallelBarGroup, j3ForearmRoot, j3ForearmVisualGroup, j4WristGroup, penAssemblyGroup, penNibWorldMarker;
+    let cableMesh;
+    let workDomeMesh, toolpathLineGroup;
+    let cadEdgesList = [];
+    let studioLights = {};
+
+    // Virtual Paper 2D Canvas (2048x2048 high-DPI) & 3D Texture
+    let paperCanvas, paperCtx, paperTexture, paperPreviewCanvas, paperPreviewCtx;
+
+    function initThreeScene() {
+      const container = document.getElementById('threeCanvasHost');
+      const w = container.clientWidth || window.innerWidth;
+      const h = container.clientHeight || window.innerHeight;
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x090d15);
+      scene.fog = new THREE.FogExp2(0x090d15, 0.085);
+
+      camera = new THREE.PerspectiveCamera(36, w / h, 0.05, 30);
+      camera.position.set(2.95, 2.05, 3.15);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+      renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.12;
+      container.appendChild(renderer.domElement);
+
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.06;
+      controls.target.set(0.95, 0.65, 0.0);
+      controls.maxPolarAngle = Math.PI / 2 - 0.01;
+      controls.minDistance = 1.2;
+      controls.maxDistance = 8.5;
+
+      setupStudioLighting();
+      buildEnvironmentAndFloor();
+      initVirtualPaperSystem();
+      buildDobotMagicianModel();
+      buildWorkEnvelopeDome();
+      buildToolpathPreviewGroup();
+
+      // Load initial Portrait Study preset & start simulation
+      loadPlotPreset('portrait');
+      renderWaypointList();
+
+      window.addEventListener('resize', onWindowResize);
+      setup2DPaperFreehandDrawing();
+
+      animateLoop();
+    }
+
+    function setupStudioLighting() {
+      const ambient = new THREE.AmbientLight(0xdbeafe, 0.55);
+      scene.add(ambient);
+
+      const keyLight = new THREE.DirectionalLight(0xffffff, 1.35);
+      keyLight.position.set(2.5, 4.8, 3.2);
+      keyLight.castShadow = true;
+      keyLight.shadow.mapSize.width = 2048;
+      keyLight.shadow.mapSize.height = 2048;
+      keyLight.shadow.camera.near = 0.5;
+      keyLight.shadow.camera.far = 12;
+      const d = 3.2;
+      keyLight.shadow.camera.left = -d;
+      keyLight.shadow.camera.right = d;
+      keyLight.shadow.camera.top = d;
+      keyLight.shadow.camera.bottom = -d;
+      keyLight.shadow.bias = -0.0005;
+      scene.add(keyLight);
+
+      const cyanRimLight = new THREE.DirectionalLight(0x00e5ff, 0.95);
+      cyanRimLight.position.set(-3.5, 2.2, -2.8);
+      scene.add(cyanRimLight);
+
+      const blueFill = new THREE.PointLight(0x3b82f6, 0.75, 8);
+      blueFill.position.set(1.8, 1.5, -2.5);
+      scene.add(blueFill);
+
+      const bounceLight = new THREE.DirectionalLight(0x93c5fd, 0.3);
+      bounceLight.position.set(0, -2, 2);
+      scene.add(bounceLight);
+
+      studioLights = { ambient, keyLight, cyanRimLight, blueFill };
+    }
+
+    /***************************************************************************
+     * 3. ENVIRONMENT: CAD GRID, DESK SURFACE & NEON STUDIO STRIPS
+     ***************************************************************************/
+    let cadGridHelper, studioNeonGroup, deskMesh;
+
+    function buildEnvironmentAndFloor() {
+      const deskGeo = new THREE.PlaneGeometry(18, 18);
+      const deskMat = new THREE.MeshStandardMaterial({
+        color: 0x0b101b,
+        roughness: 0.32,
+        metalness: 0.25
+      });
+      deskMesh = new THREE.Mesh(deskGeo, deskMat);
+      deskMesh.rotation.x = -Math.PI / 2;
+      deskMesh.position.y = -0.002;
+      deskMesh.receiveShadow = true;
+      scene.add(deskMesh);
+
+      cadGridHelper = new THREE.GridHelper(10, 100, 0x00e5ff, 0x19253a);
+      cadGridHelper.position.y = 0.001;
+      cadGridHelper.material.transparent = true;
+      cadGridHelper.material.opacity = 0.45;
+      scene.add(cadGridHelper);
+
+      const originGizmo = createCoordinateGizmo(0.42);
+      originGizmo.position.set(0, 0.005, 0);
+      scene.add(originGizmo);
+
+      studioNeonGroup = new THREE.Group();
+      const neonMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
+      const neonBarHoriz = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.025, 0.025), neonMat);
+      neonBarHoriz.position.set(0.8, 0.02, -2.1);
+      studioNeonGroup.add(neonBarHoriz);
+
+      const neonBarVert = new THREE.Mesh(new THREE.BoxGeometry(0.03, 3.5, 0.03), neonMat);
+      neonBarVert.position.set(-1.6, 1.75, -2.1);
+      studioNeonGroup.add(neonBarVert);
+      scene.add(studioNeonGroup);
+    }
+
+    function createCoordinateGizmo(length = 0.35) {
+      const group = new THREE.Group();
+      const radius = 0.008;
+      const xMat = new THREE.MeshBasicMaterial({ color: 0xf43f5e });
+      const xCyl = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, 12), xMat);
+      xCyl.rotation.z = -Math.PI / 2;
+      xCyl.position.x = length / 2;
+      const xCone = new THREE.Mesh(new THREE.ConeGeometry(radius * 2.4, 0.05, 12), xMat);
+      xCone.rotation.z = -Math.PI / 2;
+      xCone.position.x = length;
+      group.add(xCyl, xCone);
+
+      const yMat = new THREE.MeshBasicMaterial({ color: 0x10b981 });
+      const yCyl = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, 12), yMat);
+      yCyl.rotation.x = Math.PI / 2;
+      yCyl.position.z = -length / 2;
+      const yCone = new THREE.Mesh(new THREE.ConeGeometry(radius * 2.4, 0.05, 12), yMat);
+      yCone.rotation.x = -Math.PI / 2;
+      yCone.position.z = -length;
+      group.add(yCyl, yCone);
+
+      const zMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
+      const zCyl = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, 12), zMat);
+      zCyl.position.y = length / 2;
+      const zCone = new THREE.Mesh(new THREE.ConeGeometry(radius * 2.4, 0.05, 12), zMat);
+      zCone.position.y = length;
+      group.add(zCyl, zCone);
+
+      return group;
+    }
+
+    /***************************************************************************
+     * 4. VIRTUAL DRAWING PAPER SHEET (2048x2048 HIGH-DPI 2D CANVAS -> 3D TEXTURE)
+     ***************************************************************************/
+    function initVirtualPaperSystem() {
+      paperCanvas = document.createElement('canvas');
+      paperCanvas.width = 2048;
+      paperCanvas.height = 2048;
+      paperCtx = paperCanvas.getContext('2d');
+
+      paperPreviewCanvas = document.getElementById('paperPreview2D');
+      paperPreviewCtx = paperPreviewCanvas.getContext('2d');
+
+      paperTexture = new THREE.CanvasTexture(paperCanvas);
+      paperTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      paperTexture.needsUpdate = true;
+
+      resetPaperCanvasBackground();
+
+      const paperW = 1.65;
+      const paperH = 1.65;
+      const paperGeo = new THREE.PlaneGeometry(paperW, paperH);
+      const paperMat = new THREE.MeshStandardMaterial({
+        map: paperTexture,
+        roughness: 0.75,
+        metalness: 0.02
+      });
+      const paperMesh = new THREE.Mesh(paperGeo, paperMat);
+      paperMesh.rotation.x = -Math.PI / 2;
+      paperMesh.rotation.z = -Math.PI / 2;
+      paperMesh.position.set(ROBOT_SPECS.paperCenterX * SCALE, 0.003, 0);
+      paperMesh.receiveShadow = true;
+      scene.add(paperMesh);
+
+      const paperOriginGizmo = createCoordinateGizmo(0.22);
+      paperOriginGizmo.position.set(
+        (ROBOT_SPECS.paperCenterX - ROBOT_SPECS.paperSize / 2) * SCALE,
+        0.006,
+        (ROBOT_SPECS.paperSize / 2) * SCALE
+      );
+      scene.add(paperOriginGizmo);
+    }
+
+    function resetPaperCanvasBackground() {
+      paperCtx.fillStyle = '#f8fafc';
+      paperCtx.fillRect(0, 0, paperCanvas.width, paperCanvas.height);
+
+      paperCtx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+      paperCtx.lineWidth = 4;
+      paperCtx.strokeRect(72, 72, paperCanvas.width - 144, paperCanvas.height - 144);
+
+      paperCtx.fillStyle = '#64748b';
+      paperCtx.font = '600 32px "JetBrains Mono", monospace';
+      paperCtx.fillText('ROBOGENIUS • ENSA FES • CALIBRATED PLOT WORKSPACE (0,0)', 96, paperCanvas.height - 96);
+
+      paperTexture.needsUpdate = true;
+      sync2DPreviewCanvas();
+    }
+
+    function sync2DPreviewCanvas() {
+      if (!paperPreviewCtx) return;
+      paperPreviewCtx.clearRect(0, 0, paperPreviewCanvas.width, paperPreviewCanvas.height);
+      paperPreviewCtx.drawImage(paperCanvas, 0, 0, paperPreviewCanvas.width, paperPreviewCanvas.height);
+    }
+
+    function drawInkOnPaperAtRobotXY(rx, ry, isPenDown) {
+      if (!isPenDown) {
+        plotterState.lastPenPaperPos = null;
+        return;
+      }
+      const half = ROBOT_SPECS.paperSize / 2;
+      const normX = (ry + half) / ROBOT_SPECS.paperSize;
+      const normY = (rx - (ROBOT_SPECS.paperCenterX - half)) / ROBOT_SPECS.paperSize;
+
+      const margin = 128;
+      const drawSpan = paperCanvas.width - margin * 2;
+      const cx = margin + normX * drawSpan;
+      const cy = margin + normY * drawSpan;
+
+      if (cx < 0 || cx > paperCanvas.width || cy < 0 || cy > paperCanvas.height) {
+        plotterState.lastPenPaperPos = null;
+        return;
+      }
+
+      // Precision royal-blue ballpoint ink (#1d4ed8) on virtual drawing paper
+      paperCtx.strokeStyle = '#1d4ed8';
+      paperCtx.lineWidth = 5.6;
+      paperCtx.lineCap = 'round';
+      paperCtx.lineJoin = 'round';
+
+      if (plotterState.lastPenPaperPos) {
+        const dx = cx - plotterState.lastPenPaperPos.x;
+        const dy = cy - plotterState.lastPenPaperPos.y;
+        if (Math.hypot(dx, dy) < 260) {
+          paperCtx.beginPath();
+          paperCtx.moveTo(plotterState.lastPenPaperPos.x, plotterState.lastPenPaperPos.y);
+          paperCtx.lineTo(cx, cy);
+          paperCtx.stroke();
+          paperTexture.needsUpdate = true;
+          sync2DPreviewCanvas();
+        }
+      }
+      plotterState.lastPenPaperPos = { x: cx, y: cy };
+    }
+
+    /***************************************************************************
+     * 5. PROCEDURAL HIGH-PRECISION 3D MODEL OF DOBOT MAGICIAN CLASSIC
+     ***************************************************************************/
+    function createRoundedRectShape(w, h, r) {
+      const shape = new THREE.Shape();
+      const x = -w / 2, y = -h / 2;
+      shape.moveTo(x + r, y);
+      shape.lineTo(x + w - r, y);
+      shape.quadraticCurveTo(x + w, y, x + w, y + r);
+      shape.lineTo(x + w, y + h - r);
+      shape.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      shape.lineTo(x + r, y + h);
+      shape.quadraticCurveTo(x, y + h, x, y + h - r);
+      shape.lineTo(x, y + r);
+      shape.quadraticCurveTo(x, y, x + r, y);
+      return shape;
+    }
+
+    function addCADEdges(mesh, color = 0x38bdf8, opacity = 0.32) {
+      const edgesGeo = new THREE.EdgesGeometry(mesh.geometry, 22);
+      const edgesMat = new THREE.LineBasicMaterial({
+        color,
+        transparent: true,
+        opacity
+      });
+      const line = new THREE.LineSegments(edgesGeo, edgesMat);
+      mesh.add(line);
+      cadEdgesList.push(line);
+    }
+
+    function createBraidedCableTexture() {
+      const c = document.createElement('canvas');
+      c.width = 128;
+      c.height = 128;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#18181b';
+      ctx.fillRect(0, 0, 128, 128);
+      ctx.strokeStyle = '#3f3f46';
+      ctx.lineWidth = 6;
+      for (let i = -128; i < 256; i += 16) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i + 128, 128);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(i + 128, 0);
+        ctx.lineTo(i, 128);
+        ctx.stroke();
+      }
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(18, 3);
+      return tex;
+    }
+
+    function buildDobotMagicianModel() {
+      robotRootGroup = new THREE.Group();
+      robotRootGroup.name = 'Dobot_Magician_Classic';
+      scene.add(robotRootGroup);
+
+      const matWhiteABS = new THREE.MeshPhysicalMaterial({
+        name: 'White_ABS_Shell',
+        color: 0xf4f6fa,
+        roughness: 0.22,
+        metalness: 0.04,
+        clearcoat: 0.65,
+        clearcoatRoughness: 0.18
+      });
+
+      const matBlackAnodized = new THREE.MeshStandardMaterial({
+        name: 'Black_Anodized_Aluminum',
+        color: 0x141821,
+        roughness: 0.36,
+        metalness: 0.72
+      });
+
+      const matDarkRubber = new THREE.MeshStandardMaterial({
+        name: 'Dark_Rubber_Pad',
+        color: 0x0a0d12,
+        roughness: 0.8,
+        metalness: 0.1
+      });
+
+      const matChromeSteel = new THREE.MeshStandardMaterial({
+        name: 'Chrome_Stainless_Steel',
+        color: 0xe2e8f0,
+        roughness: 0.16,
+        metalness: 0.92
+      });
+
+      const matBrassGold = new THREE.MeshStandardMaterial({
+        name: 'Brass_Hardware',
+        color: 0xf59e0b,
+        roughness: 0.22,
+        metalness: 0.88
+      });
+
+      const matPurpleAnodized = new THREE.MeshStandardMaterial({
+        name: 'Purple_Collar_Accent',
+        color: 0x581c87,
+        roughness: 0.3,
+        metalness: 0.75
+      });
+
+      function createBoltCluster(radius = 0.032, depth = 0.02) {
+        const g = new THREE.Group();
+        const outer = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, depth, 20), matChromeSteel);
+        outer.rotation.x = Math.PI / 2;
+        const inner = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.48, radius * 0.48, depth * 1.15, 6), matBlackAnodized);
+        inner.rotation.x = Math.PI / 2;
+        g.add(outer, inner);
+        return g;
+      }
+
+      // PART 1: STATIONARY BASE PEDESTAL
+      const baseGroup = new THREE.Group();
+      baseGroup.name = '01_Stationary_Base';
+      robotRootGroup.add(baseGroup);
+
+      const footShape = createRoundedRectShape(1.56, 1.56, 0.22);
+      const footGeo = new THREE.ExtrudeGeometry(footShape, {
+        depth: 0.06,
+        bevelEnabled: true,
+        bevelThickness: 0.015,
+        bevelSize: 0.015,
+        bevelSegments: 3
+      });
+      footGeo.rotateX(-Math.PI / 2);
+      const footMesh = new THREE.Mesh(footGeo, matDarkRubber);
+      footMesh.position.y = 0.015;
+      footMesh.castShadow = true;
+      footMesh.receiveShadow = true;
+      baseGroup.add(footMesh);
+
+      const baseShape = createRoundedRectShape(1.52, 1.52, 0.22);
+      const baseGeo = new THREE.ExtrudeGeometry(baseShape, {
+        depth: 0.42,
+        bevelEnabled: true,
+        bevelThickness: 0.045,
+        bevelSize: 0.04,
+        bevelSegments: 5
+      });
+      baseGeo.rotateX(-Math.PI / 2);
+      const baseMesh = new THREE.Mesh(baseGeo, matWhiteABS);
+      baseMesh.position.y = 0.075;
+      baseMesh.castShadow = true;
+      baseMesh.receiveShadow = true;
+      addCADEdges(baseMesh, 0x1e293b, 0.38);
+      baseGroup.add(baseMesh);
+
+      const ringMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.56, 0.60, 0.05, 36), matBlackAnodized);
+      ringMesh.position.y = 0.53;
+      baseGroup.add(ringMesh);
+
+      // PART 2: J1 ROTATING TURRET + TWIN PILLARS + SYMMETRIC NEMA 17 STEPPERS
+      j1TurretGroup = new THREE.Group();
+      j1TurretGroup.name = '02_J1_Turret_Yaw';
+      j1TurretGroup.position.set(0, 0.54, 0);
+      robotRootGroup.add(j1TurretGroup);
+
+      const pillarSideProfile = new THREE.Shape();
+      pillarSideProfile.moveTo(-0.46, 0);
+      pillarSideProfile.lineTo(0.46, 0);
+      pillarSideProfile.lineTo(0.30, 0.68);
+      pillarSideProfile.quadraticCurveTo(0.18, 0.82, 0.0, 0.82);
+      pillarSideProfile.quadraticCurveTo(-0.18, 0.82, -0.30, 0.68);
+      pillarSideProfile.closePath();
+
+      const pillarExtrudeSettings = {
+        depth: 0.18,
+        bevelEnabled: true,
+        bevelThickness: 0.025,
+        bevelSize: 0.025,
+        bevelSegments: 4
+      };
+
+      [-1, 1].forEach((side) => {
+        const pillarGeo = new THREE.ExtrudeGeometry(pillarSideProfile, pillarExtrudeSettings);
+        const pillarMesh = new THREE.Mesh(pillarGeo, matWhiteABS);
+        pillarMesh.position.set(0, 0, side * 0.28 - 0.09);
+        pillarMesh.castShadow = true;
+        pillarMesh.receiveShadow = true;
+        addCADEdges(pillarMesh, 0x334155, 0.35);
+        j1TurretGroup.add(pillarMesh);
+      });
+
+      const bridgeGeo = new THREE.BoxGeometry(0.84, 0.22, 0.42);
+      const bridgeMesh = new THREE.Mesh(bridgeGeo, matWhiteABS);
+      bridgeMesh.position.set(0, 0.11, 0);
+      j1TurretGroup.add(bridgeMesh);
+
+      const mainAxle = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.78, 24), matChromeSteel);
+      mainAxle.rotation.x = Math.PI / 2;
+      mainAxle.position.set(0, 0.64, 0);
+      j1TurretGroup.add(mainAxle);
+
+      const brassCoupling = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.095, 0.24, 24), matBrassGold);
+      brassCoupling.rotation.x = Math.PI / 2;
+      brassCoupling.position.set(-0.08, 0.36, 0);
+      j1TurretGroup.add(brassCoupling);
+
+      function createNema17Motor(sideSign) {
+        const motorGroup = new THREE.Group();
+        const flange = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.48, 0.05), matBlackAnodized);
+        flange.position.z = sideSign * 0.025;
+        motorGroup.add(flange);
+
+        const nemaShape = createRoundedRectShape(0.43, 0.43, 0.05);
+        const nemaGeo = new THREE.ExtrudeGeometry(nemaShape, {
+          depth: 0.44,
+          bevelEnabled: true,
+          bevelThickness: 0.015,
+          bevelSize: 0.015,
+          bevelSegments: 2
+        });
+        const nemaMesh = new THREE.Mesh(nemaGeo, matBlackAnodized);
+        nemaMesh.position.z = sideSign > 0 ? 0.04 : -0.48;
+        nemaMesh.castShadow = true;
+        addCADEdges(nemaMesh, 0x38bdf8, 0.35);
+        motorGroup.add(nemaMesh);
+
+        const boltZ = sideSign * 0.49;
+        [[-0.155, -0.155], [0.155, -0.155], [-0.155, 0.155], [0.155, 0.155]].forEach(([bx, by]) => {
+          const b = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.025, 12), matChromeSteel);
+          b.rotation.x = Math.PI / 2;
+          b.position.set(bx, by, boltZ);
+          motorGroup.add(b);
+        });
+
+        return motorGroup;
+      }
+
+      const leftStepper = createNema17Motor(-1);
+      leftStepper.position.set(0.02, 0.56, -0.38);
+      j1TurretGroup.add(leftStepper);
+
+      const rightStepper = createNema17Motor(1);
+      rightStepper.position.set(0.02, 0.56, 0.38);
+      j1TurretGroup.add(rightStepper);
+
+      // PART 3: J2 REAR ARM
+      j2RearArmGroup = new THREE.Group();
+      j2RearArmGroup.name = '03_J2_Rear_Arm';
+      j2RearArmGroup.position.set(0, 0.64, 0);
+      j1TurretGroup.add(j2RearArmGroup);
+
+      const L2_len = ROBOT_SPECS.L2 * SCALE;
+      function createSlottedLinkPlate(length, width, thickness, hasSlot = true) {
+        const shape = new THREE.Shape();
+        const r = width / 2;
+        shape.absarc(0, 0, r, Math.PI / 2, (3 * Math.PI) / 2, false);
+        shape.lineTo(length, -r);
+        shape.absarc(length, 0, r, -Math.PI / 2, Math.PI / 2, false);
+        shape.lineTo(0, r);
+
+        if (hasSlot) {
+          const slot = new THREE.Path();
+          const sr = r * 0.42;
+          const sStart = length * 0.24;
+          const sEnd = length * 0.76;
+          slot.absarc(sStart, 0, sr, Math.PI / 2, (3 * Math.PI) / 2, false);
+          slot.lineTo(sEnd, -sr);
+          slot.absarc(sEnd, 0, sr, -Math.PI / 2, Math.PI / 2, false);
+          slot.lineTo(sStart, sr);
+          shape.holes.push(slot);
+        }
+
+        const geo = new THREE.ExtrudeGeometry(shape, {
+          depth: thickness,
+          bevelEnabled: true,
+          bevelThickness: 0.008,
+          bevelSize: 0.008,
+          bevelSegments: 2
+        });
+        const mesh = new THREE.Mesh(geo, matBlackAnodized);
+        mesh.castShadow = true;
+        addCADEdges(mesh, 0x00e5ff, 0.3);
+        return mesh;
+      }
+
+      [-1, 1].forEach((side) => {
+        const plate = createSlottedLinkPlate(L2_len, 0.30, 0.045, true);
+        plate.rotation.z = Math.PI / 2;
+        plate.position.z = side * 0.15 - 0.0225;
+        j2RearArmGroup.add(plate);
+      });
+
+      const rearShroudShape = createRoundedRectShape(0.26, 0.92, 0.08);
+      const rearShroudGeo = new THREE.ExtrudeGeometry(rearShroudShape, {
+        depth: 0.36,
+        bevelEnabled: true,
+        bevelThickness: 0.03,
+        bevelSize: 0.03,
+        bevelSegments: 4
+      });
+      const rearShroudMesh = new THREE.Mesh(rearShroudGeo, matWhiteABS);
+      rearShroudMesh.position.set(-0.08, L2_len * 0.52, -0.18);
+      rearShroudMesh.castShadow = true;
+      addCADEdges(rearShroudMesh, 0x334155, 0.35);
+      j2RearArmGroup.add(rearShroudMesh);
+
+      [-1, 1].forEach((side) => {
+        [0.28, 0.78].forEach((yPos) => {
+          const screw = createBoltCluster(0.028, 0.02);
+          screw.position.set(-0.06, yPos, side * 0.21);
+          j2RearArmGroup.add(screw);
+        });
+      });
+
+      j2ParallelBarGroup = new THREE.Group();
+      j2ParallelBarGroup.position.set(-0.18, 0.64, 0);
+      j1TurretGroup.add(j2ParallelBarGroup);
+      const rearParaBar = createSlottedLinkPlate(L2_len, 0.14, 0.03, false);
+      rearParaBar.rotation.z = Math.PI / 2;
+      rearParaBar.position.z = -0.015;
+      j2ParallelBarGroup.add(rearParaBar);
+
+      // PART 4: J3 FOREARM
+      j3ForearmRoot = new THREE.Group();
+      j3ForearmRoot.name = '04_J3_Elbow_Root';
+      j3ForearmRoot.position.set(0, L2_len, 0);
+      j2RearArmGroup.add(j3ForearmRoot);
+
+      j3ForearmVisualGroup = new THREE.Group();
+      j3ForearmRoot.add(j3ForearmVisualGroup);
+
+      [-1, 1].forEach((side) => {
+        const elbowBearing = createBoltCluster(0.065, 0.04);
+        elbowBearing.position.set(0, 0, side * 0.19);
+        j3ForearmVisualGroup.add(elbowBearing);
+      });
+
+      const L3_len = ROBOT_SPECS.L3 * SCALE;
+
+      [-1, 1].forEach((side) => {
+        const mainBeam = createSlottedLinkPlate(L3_len, 0.25, 0.04, true);
+        mainBeam.position.set(0, 0, side * 0.12 - 0.02);
+        j3ForearmVisualGroup.add(mainBeam);
+
+        const upperRod = createSlottedLinkPlate(L3_len * 0.92, 0.11, 0.025, false);
+        upperRod.position.set(0.04, 0.15, side * 0.075 - 0.012);
+        j3ForearmVisualGroup.add(upperRod);
+      });
+
+      const forearmHoodShape = new THREE.Shape();
+      forearmHoodShape.moveTo(-0.12, -0.08);
+      forearmHoodShape.lineTo(0.76, -0.08);
+      forearmHoodShape.quadraticCurveTo(0.84, 0.08, 0.72, 0.24);
+      forearmHoodShape.lineTo(0.02, 0.28);
+      forearmHoodShape.quadraticCurveTo(-0.16, 0.26, -0.12, -0.08);
+
+      const forearmHoodGeo = new THREE.ExtrudeGeometry(forearmHoodShape, {
+        depth: 0.34,
+        bevelEnabled: true,
+        bevelThickness: 0.028,
+        bevelSize: 0.028,
+        bevelSegments: 4
+      });
+      const forearmHoodMesh = new THREE.Mesh(forearmHoodGeo, matWhiteABS);
+      forearmHoodMesh.position.set(0, 0.02, -0.17);
+      forearmHoodMesh.castShadow = true;
+      addCADEdges(forearmHoodMesh, 0x334155, 0.35);
+      j3ForearmVisualGroup.add(forearmHoodMesh);
+
+      [-1, 1].forEach((side) => {
+        const hoodBolt = createBoltCluster(0.028, 0.02);
+        hoodBolt.position.set(0.58, 0.04, side * 0.20);
+        j3ForearmVisualGroup.add(hoodBolt);
+
+        const midBolt = createBoltCluster(0.032, 0.025);
+        midBolt.position.set(1.08, 0.0, side * 0.15);
+        j3ForearmVisualGroup.add(midBolt);
+      });
+
+      // PART 5: J4 WRIST & PRECISION PEN-HOLDER END-EFFECTOR
+      j4WristGroup = new THREE.Group();
+      j4WristGroup.name = '05_J4_Wrist_Bracket';
+      j4WristGroup.position.set(L3_len, 0, 0);
+      j3ForearmVisualGroup.add(j4WristGroup);
+
+      [-1, 1].forEach((side) => {
+        const b1 = createBoltCluster(0.042, 0.03);
+        b1.position.set(0, 0.05, side * 0.15);
+        const b2 = createBoltCluster(0.042, 0.03);
+        b2.position.set(0, -0.09, side * 0.15);
+        j4WristGroup.add(b1, b2);
+      });
+
+      const wristExtGeo = new THREE.BoxGeometry(0.36, 0.18, 0.24);
+      const wristExtMesh = new THREE.Mesh(wristExtGeo, matBlackAnodized);
+      wristExtMesh.position.set(0.18, -0.02, 0);
+      wristExtMesh.castShadow = true;
+      addCADEdges(wristExtMesh, 0x00e5ff, 0.35);
+      j4WristGroup.add(wristExtMesh);
+
+      const wristX = ROBOT_SPECS.wristOffset * SCALE;
+      penAssemblyGroup = new THREE.Group();
+      penAssemblyGroup.name = '06_Precision_Pen_Holder';
+      penAssemblyGroup.position.set(wristX, 0, 0);
+      j4WristGroup.add(penAssemblyGroup);
+
+      const clampSleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.115, 0.115, 0.30, 28), matBlackAnodized);
+      clampSleeve.position.y = -0.02;
+      clampSleeve.castShadow = true;
+      addCADEdges(clampSleeve, 0x00e5ff, 0.35);
+      penAssemblyGroup.add(clampSleeve);
+
+      const brassCollar = new THREE.Mesh(new THREE.CylinderGeometry(0.122, 0.122, 0.035, 28), matBrassGold);
+      brassCollar.position.y = 0.135;
+      penAssemblyGroup.add(brassCollar);
+
+      const knurledCollar = new THREE.Mesh(new THREE.CylinderGeometry(0.145, 0.145, 0.09, 32), matPurpleAnodized);
+      knurledCollar.position.y = -0.19;
+      addCADEdges(knurledCollar, 0xc084fc, 0.45);
+      penAssemblyGroup.add(knurledCollar);
+
+      const thumbShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.16, 14), matChromeSteel);
+      thumbShaft.rotation.z = Math.PI / 2;
+      thumbShaft.position.set(0.14, -0.02, 0);
+      const thumbHead = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.062, 0.045, 20), matBrassGold);
+      thumbHead.rotation.z = Math.PI / 2;
+      thumbHead.position.set(0.22, -0.02, 0);
+      penAssemblyGroup.add(thumbShaft, thumbHead);
+
+      const penUpperBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.056, 0.056, 0.56, 24), matBlackAnodized);
+      penUpperBarrel.position.y = 0.38;
+      penUpperBarrel.castShadow = true;
+      penAssemblyGroup.add(penUpperBarrel);
+
+      const penSilverBand = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.058, 0.14, 24), matChromeSteel);
+      penSilverBand.position.y = 0.16;
+      penAssemblyGroup.add(penSilverBand);
+
+      const penClearMat = new THREE.MeshPhysicalMaterial({
+        color: 0xe0f2fe,
+        roughness: 0.15,
+        metalness: 0.1,
+        transmission: 0.65,
+        transparent: true,
+        opacity: 0.85
+      });
+      const penLowerBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.038, 0.25, 24), penClearMat);
+      penLowerBarrel.position.y = -0.35;
+      penAssemblyGroup.add(penLowerBarrel);
+
+      const penCone = new THREE.Mesh(new THREE.ConeGeometry(0.038, 0.14, 24), matBlackAnodized);
+      penCone.rotation.x = Math.PI;
+      penCone.position.y = -0.54;
+      penAssemblyGroup.add(penCone);
+
+      const penFineNib = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.004, 0.07, 12), matChromeSteel);
+      penFineNib.position.y = -0.645;
+      penAssemblyGroup.add(penFineNib);
+
+      penNibWorldMarker = new THREE.Object3D();
+      penNibWorldMarker.position.set(0, -(ROBOT_SPECS.penDrop * SCALE), 0);
+      penAssemblyGroup.add(penNibWorldMarker);
+
+      // PART 6: DYNAMIC BRAIDED BLACK CABLE CONDUIT
+      const cableTex = createBraidedCableTexture();
+      const cableMat = new THREE.MeshStandardMaterial({
+        color: 0x18181b,
+        roughness: 0.55,
+        metalness: 0.25,
+        bumpMap: cableTex,
+        bumpScale: 0.015
+      });
+      cableMesh = new THREE.Mesh(new THREE.BufferGeometry(), cableMat);
+      cableMesh.castShadow = true;
+      j1TurretGroup.add(cableMesh);
+
+      solveInverseKinematicsAndApply(robotState.x, robotState.y, robotState.z, robotState.j4);
+    }
+
+    function updateDynamicBraidedCable() {
+      if (!cableMesh || !j2RearArmGroup || !j3ForearmRoot) return;
+      const j2Rad = THREE.MathUtils.degToRad(robotState.j2);
+      const j3Rad = THREE.MathUtils.degToRad(robotState.j3);
+
+      const L2 = ROBOT_SPECS.L2 * SCALE;
+      const elbowX = L2 * Math.sin(j2Rad);
+      const elbowY = 0.64 + L2 * Math.cos(j2Rad);
+
+      const portDist = 0.22;
+      const portX = elbowX + portDist * Math.cos(j3Rad) - 0.18 * Math.sin(j3Rad);
+      const portY = elbowY - portDist * Math.sin(j3Rad) + 0.18 * Math.cos(j3Rad);
+
+      const p0 = new THREE.Vector3(-0.28, 0.52, 0.0);
+      const p1 = new THREE.Vector3(-0.34, 1.35, 0.0);
+      const p2 = new THREE.Vector3((elbowX - 0.15) * 0.5, Math.max(elbowY, portY) + 0.58, 0.0);
+      const p3 = new THREE.Vector3(portX, portY, 0.0);
+
+      const curve = new THREE.CatmullRomCurve3([p0, p1, p2, p3]);
+      if (cableMesh.geometry) cableMesh.geometry.dispose();
+      cableMesh.geometry = new THREE.TubeGeometry(curve, 28, 0.042, 12, false);
+    }
+
+    /***************************************************************************
+     * 6. 320mm WORK ENVELOPE WIREFRAME DOME & 3D TOOLPATH OVERLAYS
+     ***************************************************************************/
+    function buildWorkEnvelopeDome() {
+      workDomeMesh = new THREE.Group();
+      const domeRadius = 3.20;
+
+      const domeGeo = new THREE.SphereGeometry(
+        domeRadius,
+        36,
+        20,
+        -Math.PI * 0.62,
+        Math.PI * 1.24,
+        0,
+        Math.PI * 0.48
+      );
+      const domeMat = new THREE.MeshPhysicalMaterial({
+        color: 0x38bdf8,
+        transparent: true,
+        opacity: 0.05,
+        roughness: 0.2,
+        side: THREE.DoubleSide,
+        depthWrite: false
+      });
+      const domeShell = new THREE.Mesh(domeGeo, domeMat);
+      workDomeMesh.add(domeShell);
+
+      const wireGeo = new THREE.WireframeGeometry(domeGeo);
+      const wireMat = new THREE.LineBasicMaterial({
+        color: 0x7dd3fc,
+        transparent: true,
+        opacity: 0.18
+      });
+      const wireLines = new THREE.LineSegments(wireGeo, wireMat);
+      workDomeMesh.add(wireLines);
+
+      const arcPoints = [];
+      for (let a = -Math.PI * 0.62; a <= Math.PI * 0.62; a += 0.04) {
+        arcPoints.push(new THREE.Vector3(Math.cos(a) * domeRadius, 0.008, Math.sin(a) * domeRadius));
+      }
+      const arcGeo = new THREE.BufferGeometry().setFromPoints(arcPoints);
+      const arcLine = new THREE.Line(arcGeo, new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.65 }));
+      workDomeMesh.add(arcLine);
+
+      scene.add(workDomeMesh);
+    }
+
+    function buildToolpathPreviewGroup() {
+      toolpathLineGroup = new THREE.Group();
+      scene.add(toolpathLineGroup);
+    }
+
+    function rebuild3DToolpathLines() {
+      while (toolpathLineGroup.children.length > 0) {
+        const c = toolpathLineGroup.children[0];
+        if (c.geometry) c.geometry.dispose();
+        toolpathLineGroup.remove(c);
+      }
+
+      const drawMat = new THREE.LineBasicMaterial({ color: 0x1d4ed8, transparent: true, opacity: 0.75 });
+      const travelMat = new THREE.LineDashedMaterial({
+        color: 0xf43f5e,
+        dashSize: 0.04,
+        gapSize: 0.025,
+        transparent: true,
+        opacity: 0.42
+      });
+
+      let prevEndWorld = null;
+      plotterState.strokes.forEach((stroke) => {
+        if (stroke.length < 2) return;
+        const pts = [];
+        stroke.forEach((pt) => {
+          const { rx, ry } = paperNormToRobotXY(pt.x, pt.y);
+          pts.push(new THREE.Vector3(rx * SCALE, 0.008, -ry * SCALE));
+        });
+        const geo = new THREE.BufferGeometry().setFromPoints(pts);
+        toolpathLineGroup.add(new THREE.Line(geo, drawMat));
+
+        if (prevEndWorld) {
+          const startWorld = pts[0];
+          const midWorld = prevEndWorld.clone().lerp(startWorld, 0.5);
+          midWorld.y = 0.15;
+          const travelCurve = new THREE.QuadraticBezierCurve3(prevEndWorld, midWorld, startWorld);
+          const travelGeo = new THREE.BufferGeometry().setFromPoints(travelCurve.getPoints(12));
+          const travelLine = new THREE.Line(travelGeo, travelMat);
+          travelLine.computeLineDistances();
+          toolpathLineGroup.add(travelLine);
+        }
+        prevEndWorld = pts[pts.length - 1];
+      });
+    }
+
+    /***************************************************************************
+     * 7. ANALYTICAL 4-AXIS INVERSE & FORWARD KINEMATICS SOLVER
+     ***************************************************************************/
+    function solveInverseKinematicsAndApply(targetX, targetY, targetZ, targetJ4 = robotState.j4) {
+      const j1Rad = Math.atan2(targetY, targetX);
+      const horizDist = Math.hypot(targetX, targetY);
+
+      const R = Math.max(45, horizDist - ROBOT_SPECS.wristOffset);
+      const wristTargetZ = targetZ + ROBOT_SPECS.penDrop;
+      const H = wristTargetZ - ROBOT_SPECS.baseHeight;
+
+      const L2 = ROBOT_SPECS.L2;
+      const L3 = ROBOT_SPECS.L3;
+      const maxSpan = (L2 + L3) * 0.992;
+      const minSpan = Math.abs(L2 - L3) * 1.05;
+
+      let D = Math.hypot(R, H);
+      D = THREE.MathUtils.clamp(D, minSpan, maxSpan);
+
+      const alpha = Math.atan2(H, R);
+      const cosBeta = THREE.MathUtils.clamp((L2 * L2 + D * D - L3 * L3) / (2 * L2 * D), -1, 1);
+      const beta = Math.acos(cosBeta);
+
+      const theta2FromHoriz = alpha + beta;
+      const j2Rad = Math.PI / 2 - theta2FromHoriz;
+
+      const elbowR = L2 * Math.sin(j2Rad);
+      const elbowH = L2 * Math.cos(j2Rad);
+
+      const j3Rad = Math.atan2(elbowH - H, R - elbowR);
+
+      robotState.x = targetX;
+      robotState.y = targetY;
+      robotState.z = targetZ;
+      robotState.j1 = THREE.MathUtils.radToDeg(j1Rad);
+      robotState.j2 = THREE.MathUtils.radToDeg(j2Rad);
+      robotState.j3 = THREE.MathUtils.radToDeg(j3Rad);
+      robotState.j4 = targetJ4;
+      robotState.penDown = targetZ <= 1.2;
+
+      applyJointAnglesTo3DHierarchy();
+      syncControlSlidersUI();
+    }
+
+    function solveForwardKinematicsFromJoints(j1Deg, j2Deg, j3Deg, j4Deg) {
+      const j1Rad = THREE.MathUtils.degToRad(j1Deg);
+      const j2Rad = THREE.MathUtils.degToRad(j2Deg);
+      const j3Rad = THREE.MathUtils.degToRad(j3Deg);
+
+      const L2 = ROBOT_SPECS.L2;
+      const L3 = ROBOT_SPECS.L3;
+
+      const R = L2 * Math.sin(j2Rad) + L3 * Math.cos(j3Rad);
+      const H = L2 * Math.cos(j2Rad) - L3 * Math.sin(j3Rad);
+
+      const horizDist = R + ROBOT_SPECS.wristOffset;
+      const tcpX = horizDist * Math.cos(j1Rad);
+      const tcpY = horizDist * Math.sin(j1Rad);
+      const tcpZ = Math.max(0, ROBOT_SPECS.baseHeight + H - ROBOT_SPECS.penDrop);
+
+      robotState.j1 = j1Deg;
+      robotState.j2 = j2Deg;
+      robotState.j3 = j3Deg;
+      robotState.j4 = j4Deg;
+      robotState.x = tcpX;
+      robotState.y = tcpY;
+      robotState.z = tcpZ;
+      robotState.penDown = tcpZ <= 1.2;
+
+      applyJointAnglesTo3DHierarchy();
+      syncControlSlidersUI();
+    }
+
+    function applyJointAnglesTo3DHierarchy() {
+      if (!j1TurretGroup) return;
+      const j1Rad = THREE.MathUtils.degToRad(robotState.j1);
+      const j2Rad = THREE.MathUtils.degToRad(robotState.j2);
+      const j3Rad = THREE.MathUtils.degToRad(robotState.j3);
+      const j4Rad = THREE.MathUtils.degToRad(robotState.j4);
+
+      j1TurretGroup.rotation.y = j1Rad;
+      j2RearArmGroup.rotation.z = -j2Rad;
+      j2ParallelBarGroup.rotation.z = -j2Rad;
+      j3ForearmRoot.rotation.z = j2Rad;
+      j3ForearmVisualGroup.rotation.z = -j3Rad;
+      j4WristGroup.rotation.z = j3Rad;
+      penAssemblyGroup.rotation.y = j4Rad;
+
+      updateDynamicBraidedCable();
+    }
+
+    /***************************************************************************
+     * 8. BUILT-IN HIGH-PRECISION VECTOR ART PRESETS
+     ***************************************************************************/
+    function getPortraitStudyStrokes() {
+      return [
+        [
+          { x: -0.42, y: -0.15 }, { x: -0.40, y: 0.08 }, { x: -0.34, y: 0.28 },
+          { x: -0.22, y: 0.45 }, { x: -0.05, y: 0.56 }, { x: 0.14, y: 0.62 },
+          { x: 0.30, y: 0.60 }, { x: 0.42, y: 0.50 }, { x: 0.48, y: 0.34 },
+          { x: 0.50, y: 0.14 }, { x: 0.47, y: -0.06 }, { x: 0.42, y: -0.24 }
+        ],
+        [
+          { x: -0.41, y: -0.04 }, { x: -0.53, y: -0.02 }, { x: -0.58, y: 0.08 },
+          { x: -0.55, y: 0.22 }, { x: -0.46, y: 0.30 }, { x: -0.36, y: 0.27 }
+        ],
+        [
+          { x: -0.49, y: 0.05 }, { x: -0.51, y: 0.14 }, { x: -0.44, y: 0.21 }
+        ],
+        [
+          { x: -0.42, y: -0.05 }, { x: -0.56, y: -0.18 }, { x: -0.62, y: -0.36 },
+          { x: -0.54, y: -0.54 }, { x: -0.36, y: -0.66 }, { x: -0.12, y: -0.72 },
+          { x: 0.15, y: -0.70 }, { x: 0.38, y: -0.58 }, { x: 0.50, y: -0.40 },
+          { x: 0.48, y: -0.18 }
+        ],
+        [
+          { x: -0.38, y: -0.22 }, { x: -0.46, y: -0.38 }, { x: -0.36, y: -0.52 },
+          { x: -0.14, y: -0.58 }, { x: 0.12, y: -0.55 }, { x: 0.32, y: -0.44 },
+          { x: 0.42, y: -0.26 }
+        ],
+        [
+          { x: -0.28, y: -0.34 }, { x: -0.12, y: -0.44 }, { x: 0.08, y: -0.46 },
+          { x: 0.26, y: -0.38 }
+        ],
+        [
+          { x: -0.58, y: -0.28 }, { x: -0.68, y: -0.42 }, { x: -0.58, y: -0.60 },
+          { x: -0.38, y: -0.74 }, { x: -0.08, y: -0.78 }, { x: 0.22, y: -0.74 }
+        ],
+        [
+          { x: -0.28, y: -0.10 }, { x: -0.16, y: -0.16 }, { x: -0.01, y: -0.14 },
+          { x: 0.02, y: -0.10 }, { x: -0.15, y: -0.11 }, { x: -0.28, y: -0.10 }
+        ],
+        [
+          { x: 0.15, y: -0.13 }, { x: 0.27, y: -0.17 }, { x: 0.41, y: -0.12 },
+          { x: 0.39, y: -0.08 }, { x: 0.27, y: -0.12 }, { x: 0.15, y: -0.13 }
+        ],
+        [
+          { x: -0.24, y: -0.02 }, { x: -0.14, y: -0.06 }, { x: -0.04, y: -0.02 },
+          { x: -0.14, y: 0.02 }, { x: -0.24, y: -0.02 }
+        ],
+        [
+          { x: -0.16, y: -0.04 }, { x: -0.12, y: -0.04 }, { x: -0.11, y: 0.00 },
+          { x: -0.16, y: 0.00 }, { x: -0.16, y: -0.04 }
+        ],
+        [
+          { x: 0.18, y: -0.03 }, { x: 0.28, y: -0.07 }, { x: 0.37, y: -0.03 },
+          { x: 0.28, y: 0.01 }, { x: 0.18, y: -0.03 }
+        ],
+        [
+          { x: 0.26, y: -0.05 }, { x: 0.30, y: -0.05 }, { x: 0.30, y: -0.01 },
+          { x: 0.26, y: -0.01 }, { x: 0.26, y: -0.05 }
+        ],
+        [
+          { x: 0.08, y: -0.11 }, { x: 0.11, y: 0.04 }, { x: 0.17, y: 0.16 },
+          { x: 0.12, y: 0.22 }, { x: 0.03, y: 0.21 }, { x: -0.03, y: 0.17 }
+        ],
+        [
+          { x: 0.17, y: 0.18 }, { x: 0.22, y: 0.19 }, { x: 0.19, y: 0.22 }
+        ],
+        [
+          { x: -0.08, y: 0.34 }, { x: 0.02, y: 0.30 }, { x: 0.09, y: 0.32 },
+          { x: 0.16, y: 0.29 }, { x: 0.27, y: 0.33 }, { x: 0.12, y: 0.35 },
+          { x: 0.02, y: 0.35 }, { x: -0.08, y: 0.34 }
+        ],
+        [
+          { x: -0.06, y: 0.35 }, { x: 0.04, y: 0.42 }, { x: 0.16, y: 0.41 },
+          { x: 0.25, y: 0.34 }
+        ],
+        [
+          { x: 0.08, y: 0.49 }, { x: 0.16, y: 0.50 }, { x: 0.22, y: 0.48 }
+        ],
+        [
+          { x: -0.26, y: 0.12 }, { x: -0.20, y: 0.24 }, { x: -0.14, y: 0.31 }
+        ],
+        [
+          { x: -0.34, y: 0.30 }, { x: -0.30, y: 0.54 }, { x: -0.38, y: 0.76 },
+          { x: -0.58, y: 0.84 }
+        ],
+        [
+          { x: 0.32, y: 0.59 }, { x: 0.36, y: 0.74 }, { x: 0.56, y: 0.82 },
+          { x: 0.75, y: 0.84 }
+        ],
+        [
+          { x: -0.12, y: 0.62 }, { x: 0.06, y: 0.76 }, { x: 0.28, y: 0.80 }
+        ]
+      ];
+    }
+
+    function getGuillocheRoseStrokes() {
+      const strokes = [];
+      const petalPts = [];
+      const steps = 360;
+      for (let i = 0; i <= steps; i++) {
+        const t = (i / steps) * Math.PI * 2 * 7;
+        const r = 0.52 + 0.28 * Math.cos((5 / 7) * t);
+        petalPts.push({ x: r * Math.cos(t), y: r * Math.sin(t) });
+      }
+      strokes.push(petalPts);
+
+      const innerPts = [];
+      for (let i = 0; i <= 180; i++) {
+        const t = (i / 180) * Math.PI * 2 * 5;
+        const r = 0.24 + 0.14 * Math.sin((8 / 5) * t);
+        innerPts.push({ x: r * Math.cos(t), y: r * Math.sin(t) });
+      }
+      strokes.push(innerPts);
+      return strokes;
+    }
+
+    function getMoroccanZelligeStrokes() {
+      const strokes = [];
+      for (let rot = 0; rot < 2; rot++) {
+        const a0 = (rot * Math.PI) / 4;
+        const sq = [];
+        for (let k = 0; k <= 4; k++) {
+          const ang = a0 + (k * Math.PI) / 2 + Math.PI / 4;
+          sq.push({ x: 0.65 * Math.cos(ang), y: 0.65 * Math.sin(ang) });
+        }
+        strokes.push(sq);
+      }
+      const oct = [];
+      for (let k = 0; k <= 8; k++) {
+        const ang = (k * Math.PI) / 4;
+        oct.push({ x: 0.34 * Math.cos(ang), y: 0.34 * Math.sin(ang) });
+      }
+      strokes.push(oct);
+
+      for (let k = 0; k < 8; k++) {
+        const ang1 = (k * Math.PI) / 4;
+        const ang2 = ang1 + Math.PI / 8;
+        const ang3 = ang1 + Math.PI / 4;
+        strokes.push([
+          { x: 0.34 * Math.cos(ang1), y: 0.34 * Math.sin(ang1) },
+          { x: 0.78 * Math.cos(ang2), y: 0.78 * Math.sin(ang2) },
+          { x: 0.34 * Math.cos(ang3), y: 0.34 * Math.sin(ang3) }
+        ]);
+      }
+      return strokes;
+    }
+
+    function getCalibrationLogoStrokes() {
+      const strokes = [];
+      strokes.push([
+        { x: -0.78, y: -0.78 }, { x: 0.78, y: -0.78 },
+        { x: 0.78, y: 0.78 }, { x: -0.78, y: 0.78 }, { x: -0.78, y: -0.78 }
+      ]);
+      const circ = [];
+      for (let i = 0; i <= 64; i++) {
+        const a = (i / 64) * Math.PI * 2;
+        circ.push({ x: 0.56 * Math.cos(a), y: 0.56 * Math.sin(a) });
+      }
+      strokes.push(circ);
+      strokes.push([
+        { x: -0.32, y: 0.24 }, { x: -0.32, y: -0.24 }, { x: -0.08, y: -0.24 },
+        { x: -0.02, y: -0.14 }, { x: -0.08, y: -0.02 }, { x: -0.32, y: -0.02 },
+        { x: -0.04, y: 0.24 }
+      ]);
+      strokes.push([
+        { x: 0.34, y: -0.16 }, { x: 0.22, y: -0.24 }, { x: 0.08, y: -0.18 },
+        { x: 0.06, y: 0.16 }, { x: 0.22, y: 0.24 }, { x: 0.34, y: 0.14 },
+        { x: 0.34, y: 0.02 }, { x: 0.18, y: 0.02 }
+      ]);
+      return strokes;
+    }
+
+    function paperNormToRobotXY(nx, ny) {
+      const half = ROBOT_SPECS.paperSize / 2;
+      const rx = ROBOT_SPECS.paperCenterX + ny * half;
+      const ry = nx * half;
+      return { rx, ry };
+    }
+
+    function buildMotionQueueFromStrokes(strokes) {
+      const queue = [];
+      let totalDist = 0;
+      let lifts = 0;
+      let lastPos = null;
+
+      strokes.forEach((stroke, sIdx) => {
+        if (stroke.length === 0) return;
+        const first = paperNormToRobotXY(stroke[0].x, stroke[0].y);
+
+        lifts++;
+        if (lastPos) {
+          const travelSteps = 8;
+          for (let i = 1; i <= travelSteps; i++) {
+            const t = i / travelSteps;
+            queue.push({
+              x: THREE.MathUtils.lerp(lastPos.rx, first.rx, t),
+              y: THREE.MathUtils.lerp(lastPos.ry, first.ry, t),
+              z: 15.0,
+              penDown: false,
+              strokeIdx: sIdx + 1
+            });
+          }
+          totalDist += Math.hypot(first.rx - lastPos.rx, first.ry - lastPos.ry);
+        } else {
+          queue.push({ x: first.rx, y: first.ry, z: 15.0, penDown: false, strokeIdx: sIdx + 1 });
+        }
+
+        queue.push({ x: first.rx, y: first.ry, z: 4.0, penDown: false, strokeIdx: sIdx + 1 });
+        queue.push({ x: first.rx, y: first.ry, z: 0.0, penDown: true, strokeIdx: sIdx + 1 });
+
+        for (let i = 0; i < stroke.length - 1; i++) {
+          const pA = paperNormToRobotXY(stroke[i].x, stroke[i].y);
+          const pB = paperNormToRobotXY(stroke[i + 1].x, stroke[i + 1].y);
+          const segLen = Math.hypot(pB.rx - pA.rx, pB.ry - pA.ry);
+          totalDist += segLen;
+          const steps = Math.max(2, Math.ceil(segLen / 1.8));
+          for (let s = 1; s <= steps; s++) {
+            const t = s / steps;
+            queue.push({
+              x: THREE.MathUtils.lerp(pA.rx, pB.rx, t),
+              y: THREE.MathUtils.lerp(pA.ry, pB.ry, t),
+              z: 0.0,
+              penDown: true,
+              strokeIdx: sIdx + 1
+            });
+          }
+        }
+
+        const lastPt = stroke[stroke.length - 1];
+        lastPos = paperNormToRobotXY(lastPt.x, lastPt.y);
+
+        queue.push({ x: lastPos.rx, y: lastPos.ry, z: 15.0, penDown: false, strokeIdx: sIdx + 1 });
+      });
+
+      plotterState.flatQueue = queue;
+      plotterState.queueIndex = 0;
+      plotterState.totalTravelMm = Math.round(totalDist);
+      plotterState.penLiftsCount = lifts;
+
+      document.getElementById('telemetryTravelDist').textContent = `${plotterState.totalTravelMm} mm`;
+      document.getElementById('telemetryPenLifts').textContent = `${plotterState.penLiftsCount} lifts`;
+    }
+
+    function loadPlotPreset(presetKey) {
+      plotterState.currentPreset = presetKey;
+      document.querySelectorAll('.preset-btn').forEach((btn) => {
+        btn.className = 'preset-btn text-left px-2.5 py-2 rounded-lg border border-rg-border bg-rg-bg/60 hover:bg-slate-800/80 transition flex items-center justify-between';
+      });
+      const activeBtn = document.getElementById(`preset-${presetKey}`);
+      if (activeBtn) {
+        activeBtn.className = 'preset-btn text-left px-2.5 py-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 transition flex items-center justify-between';
+      }
+
+      const names = {
+        portrait: 'Studio Portrait',
+        rose: 'Guilloché Rose',
+        zellige: 'Moroccan Zellige',
+        logo: 'Calibration Grid',
+        custom: 'AI Studio Portrait'
+      };
+      document.getElementById('activePresetLabel').textContent = names[presetKey] || 'Custom Plot';
+
+      if (presetKey === 'portrait') plotterState.strokes = getPortraitStudyStrokes();
+      else if (presetKey === 'rose') plotterState.strokes = getGuillocheRoseStrokes();
+      else if (presetKey === 'zellige') plotterState.strokes = getMoroccanZelligeStrokes();
+      else if (presetKey === 'logo') plotterState.strokes = getCalibrationLogoStrokes();
+
+      resetPaperCanvasBackground();
+      buildMotionQueueFromStrokes(plotterState.strokes);
+      rebuild3DToolpathLines();
+
+      plotterState.isPlaying = true;
+      updatePlayPauseButtonUI();
+    }
+
+    /***************************************************************************
+     * 9. ROBUST LIVE WEBCAM CAPTURE, MULTI-METHOD PHOTO/SVG UPLOAD &
+     *    ULTRA-MINIMALIST SVG VECTORIZATION ENGINE
+     ***************************************************************************/
+    const minimalStudio = {
+      webcamStream: null,
+      isWebcamLive: false,
+      activeDeviceId: '',
+      snapshotCanvas: null,   // Offscreen 256x256 canvas storing the current framed portrait
+      uploadedImage: null,    // Raw uploaded Image object for interactive Pan/Zoom/Rotate/Flip
+      photoTransform: {
+        zoom: 1.0,
+        panX: 0,
+        panY: 0,
+        rotationDeg: 0,
+        flipH: false,
+        fileName: '',
+        naturalW: 0,
+        naturalH: 0
+      },
+      erasedStack: [],        // Undo stack for click-to-erase strokes
+      strokes: [],            // Normalized [-0.84, 0.84] minimal strokes
+      svgString: '',
+      aiServerReady: false,   // local server.py reachable with model present
+      aiBusy: false,          // an AI request is in flight
+      aiWebcamCanvas: null    // optional full-res 768 webcam frame for AI
+    };
+
+    function initMinimalPortraitStudio() {
+      minimalStudio.snapshotCanvas = document.createElement('canvas');
+      minimalStudio.snapshotCanvas.width = 256;
+      minimalStudio.snapshotCanvas.height = 256;
+
+      populateCameraDevicesDropdown();
+      setupPhotoUploadDragDropPasteAndPan();
+      // Load default clean male portrait & generate ultra-minimal SVG right away
+      loadProceduralPortrait('male');
+      checkAiServer();
+      requestAnimationFrame(webcamRenderLoop);
+    }
+
+    function triggerPhotoFileDialog() {
+      const input = document.getElementById('masterPhotoFileInput');
+      if (input) {
+        input.value = '';
+        input.click();
+      }
+    }
+
+    // Set up Drag & Drop (Window + Stage 1 Card), Global Clipboard Paste (Ctrl+V), and Canvas Pan/Wheel-Zoom
+    function setupPhotoUploadDragDropPasteAndPan() {
+      const overlay = document.getElementById('globalDropOverlay');
+      const stage1Card = document.getElementById('stage1DropCard');
+      let dragDepth = 0;
+
+      window.addEventListener('dragenter', (e) => {
+        if (e.dataTransfer && e.dataTransfer.types && e.dataTransfer.types.includes('Files')) {
+          e.preventDefault();
+          dragDepth++;
+          if (overlay) {
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+          }
+          if (stage1Card) stage1Card.classList.add('border-cyan-400', 'neon-glow');
+        }
+      });
+
+      window.addEventListener('dragover', (e) => {
+        if (e.dataTransfer && e.dataTransfer.types && e.dataTransfer.types.includes('Files')) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'copy';
+        }
+      });
+
+      window.addEventListener('dragleave', (e) => {
+        dragDepth = Math.max(0, dragDepth - 1);
+        if (dragDepth === 0) {
+          if (overlay) {
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+          }
+          if (stage1Card) stage1Card.classList.remove('border-cyan-400', 'neon-glow');
+        }
+      });
+
+      window.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dragDepth = 0;
+        if (overlay) {
+          overlay.classList.add('hidden');
+          overlay.classList.remove('flex');
+        }
+        if (stage1Card) stage1Card.classList.remove('border-cyan-400', 'neon-glow');
+
+        const files = e.dataTransfer?.files;
+        if (files && files.length > 0) {
+          processUploadedFileObject(files[0]);
+        }
+      });
+
+      // Global Clipboard Paste (Ctrl+V / Cmd+V) for instant image or SVG pasting
+      window.addEventListener('paste', (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          if (item.type.indexOf('image') !== -1) {
+            e.preventDefault();
+            const file = item.getAsFile();
+            if (file) {
+              processUploadedFileObject(file, 'Clipboard_Paste.png');
+            }
+            return;
+          }
+        }
+      });
+
+      // Interactive Drag-to-Pan & Mouse-Wheel Zoom on Stage 1 Capture Canvas
+      const capCanvas = document.getElementById('camCaptureCanvas');
+      if (!capCanvas) return;
+
+      let isPanningPhoto = false;
+      let startPanX = 0, startPanY = 0;
+
+      capCanvas.addEventListener('pointerdown', (e) => {
+        if (!minimalStudio.uploadedImage || minimalStudio.isWebcamLive) return;
+        isPanningPhoto = true;
+        startPanX = e.clientX - minimalStudio.photoTransform.panX;
+        startPanY = e.clientY - minimalStudio.photoTransform.panY;
+        capCanvas.setPointerCapture(e.pointerId);
+      });
+
+      capCanvas.addEventListener('pointermove', (e) => {
+        if (!isPanningPhoto || !minimalStudio.uploadedImage) return;
+        minimalStudio.photoTransform.panX = THREE.MathUtils.clamp(e.clientX - startPanX, -140, 140);
+        minimalStudio.photoTransform.panY = THREE.MathUtils.clamp(e.clientY - startPanY, -140, 140);
+        redrawUploadedImageToSnapshotCanvas();
+        runMinimalSVGPipeline();
+      });
+
+      capCanvas.addEventListener('pointerup', (e) => {
+        if (isPanningPhoto) {
+          isPanningPhoto = false;
+          try { capCanvas.releasePointerCapture(e.pointerId); } catch (err) {}
+        }
+      });
+
+      capCanvas.addEventListener('wheel', (e) => {
+        if (!minimalStudio.uploadedImage || minimalStudio.isWebcamLive) return;
+        e.preventDefault();
+        const delta = e.deltaY < 0 ? 0.08 : -0.08;
+        const newZoom = THREE.MathUtils.clamp(minimalStudio.photoTransform.zoom + delta, 0.8, 2.8);
+        minimalStudio.photoTransform.zoom = newZoom;
+        const zoomSlider = document.getElementById('sliderPhotoZoom');
+        if (zoomSlider) zoomSlider.value = newZoom.toFixed(2);
+        document.getElementById('valPhotoZoom').textContent = `${newZoom.toFixed(1)}x`;
+        redrawUploadedImageToSnapshotCanvas();
+        runMinimalSVGPipeline();
+      }, { passive: false });
+    }
+
+    function onPhotoFramingSliderInput() {
+      const z = parseFloat(document.getElementById('sliderPhotoZoom')?.value || '1.0');
+      minimalStudio.photoTransform.zoom = z;
+      document.getElementById('valPhotoZoom').textContent = `${z.toFixed(1)}x`;
+      if (minimalStudio.uploadedImage && !minimalStudio.isWebcamLive) {
+        redrawUploadedImageToSnapshotCanvas();
+        runMinimalSVGPipeline();
+      }
+    }
+
+    function rotatePhoto90() {
+      minimalStudio.photoTransform.rotationDeg = (minimalStudio.photoTransform.rotationDeg + 90) % 360;
+      if (minimalStudio.uploadedImage && !minimalStudio.isWebcamLive) {
+        redrawUploadedImageToSnapshotCanvas();
+        runMinimalSVGPipeline();
+      } else {
+        // Rotate existing snapshotCanvas by 90 degrees even for webcam/procedural portrait
+        const temp = document.createElement('canvas');
+        temp.width = 256;
+        temp.height = 256;
+        temp.getContext('2d').drawImage(minimalStudio.snapshotCanvas, 0, 0);
+        const ctx = minimalStudio.snapshotCanvas.getContext('2d');
+        ctx.save();
+        ctx.translate(128, 128);
+        ctx.rotate(Math.PI / 2);
+        ctx.drawImage(temp, -128, -128);
+        ctx.restore();
+        runMinimalSVGPipeline();
+      }
+    }
+
+    function togglePhotoFlip() {
+      minimalStudio.photoTransform.flipH = !minimalStudio.photoTransform.flipH;
+      if (minimalStudio.uploadedImage && !minimalStudio.isWebcamLive) {
+        redrawUploadedImageToSnapshotCanvas();
+        runMinimalSVGPipeline();
+      } else {
+        const temp = document.createElement('canvas');
+        temp.width = 256;
+        temp.height = 256;
+        temp.getContext('2d').drawImage(minimalStudio.snapshotCanvas, 0, 0);
+        const ctx = minimalStudio.snapshotCanvas.getContext('2d');
+        ctx.save();
+        ctx.translate(256, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(temp, 0, 0);
+        ctx.restore();
+        runMinimalSVGPipeline();
+      }
+    }
+
+    function resetPhotoFraming() {
+      minimalStudio.photoTransform.zoom = 1.0;
+      minimalStudio.photoTransform.panX = 0;
+      minimalStudio.photoTransform.panY = 0;
+      minimalStudio.photoTransform.rotationDeg = 0;
+      minimalStudio.photoTransform.flipH = false;
+      const zoomSlider = document.getElementById('sliderPhotoZoom');
+      if (zoomSlider) zoomSlider.value = '1.0';
+      document.getElementById('valPhotoZoom').textContent = '1.0x';
+      if (minimalStudio.uploadedImage && !minimalStudio.isWebcamLive) {
+        redrawUploadedImageToSnapshotCanvas();
+        runMinimalSVGPipeline();
+      }
+    }
+
+    function redrawUploadedImageToSnapshotCanvas() {
+      const img = minimalStudio.uploadedImage;
+      if (!img) return;
+      const ctx = minimalStudio.snapshotCanvas.getContext('2d');
+      const W = 256, H = 256;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, W, H);
+
+      const { zoom, panX, panY, rotationDeg, flipH } = minimalStudio.photoTransform;
+      const minDim = Math.min(img.width, img.height);
+      const baseScale = (W / minDim) * zoom;
+
+      ctx.save();
+      ctx.translate(W / 2 + panX, H / 2 + panY);
+      ctx.rotate((rotationDeg * Math.PI) / 180);
+      ctx.scale(flipH ? -baseScale : baseScale, baseScale);
+      ctx.drawImage(img, -img.width / 2, -img.height / 2);
+      ctx.restore();
+    }
+
+    // Switch between Split View (Studio + 3D Dobot), Full Studio, or Full 3D Twin
+    function setWorkspaceLayout(mode) {
+      const studioPane = document.getElementById('dockedStudioPane');
+      const viewport = document.getElementById('viewportContainer');
+      const rightBar = document.getElementById('rightControlSidebar');
+
+      ['split', 'studio', 'twin'].forEach((k) => {
+        const b = document.getElementById(`layoutBtn-${k}`);
+        if (!b) return;
+        b.className = k === mode
+          ? 'px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
+          : 'px-3 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 text-slate-300 hover:text-white';
+      });
+
+      if (mode === 'split') {
+        studioPane.className = 'w-full lg:w-[540px] xl:w-[600px] shrink-0 bg-rg-panel border-r border-rg-border flex flex-col justify-between z-20 overflow-y-auto';
+        viewport.classList.remove('hidden');
+        if (rightBar) rightBar.className = 'w-72 xl:w-80 shrink-0 bg-rg-panel border-l border-rg-border hidden 2xl:flex flex-col justify-between z-20 overflow-y-auto';
+      } else if (mode === 'studio') {
+        studioPane.className = 'w-full flex-1 bg-rg-panel flex flex-col justify-between z-20 overflow-y-auto';
+        viewport.classList.add('hidden');
+        if (rightBar) rightBar.classList.add('hidden');
+      } else if (mode === 'twin') {
+        studioPane.className = 'hidden';
+        viewport.classList.remove('hidden');
+        if (rightBar) rightBar.className = 'w-72 xl:w-80 shrink-0 bg-rg-panel border-l border-rg-border flex flex-col justify-between z-20 overflow-y-auto';
+      }
+
+      setTimeout(onWindowResize, 60);
+    }
+
+    async function populateCameraDevicesDropdown() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoInputs = devices.filter((d) => d.kind === 'videoinput');
+        const sel = document.getElementById('cameraDeviceSelect');
+        if (!sel || videoInputs.length === 0) return;
+        sel.innerHTML = videoInputs
+          .map((d, i) => `<option value="${d.deviceId}">${d.label || 'Camera #' + (i + 1)}</option>`)
+          .join('');
+      } catch (e) {}
+    }
+
+    async function toggleWebcamStream() {
+      if (minimalStudio.isWebcamLive) {
+        stopLiveWebcamStream();
+      } else {
+        await startLiveWebcamStream(minimalStudio.activeDeviceId);
+      }
+    }
+
+    async function switchCameraDevice(deviceId) {
+      minimalStudio.activeDeviceId = deviceId;
+      if (minimalStudio.isWebcamLive) {
+        await startLiveWebcamStream(deviceId);
+      }
+    }
+
+    async function startLiveWebcamStream(preferredDeviceId = '') {
+      const video = document.getElementById('liveWebcamVideo');
+      const statusPill = document.getElementById('webcamStatusPill');
+      const toggleBtnText = document.getElementById('btnToggleWebcamText');
+      const liveBadge = document.getElementById('liveCamIndicator');
+
+      stopLiveWebcamStream();
+      minimalStudio.aiWebcamCanvas = null;
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        statusPill.textContent = 'Cam API Blocked';
+        statusPill.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/20 text-rose-300';
+        showToast('Browser blocked camera access — loaded high-contrast test portrait.');
+        return;
+      }
+
+      try {
+        statusPill.textContent = 'Starting Cam...';
+        statusPill.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300';
+
+        let stream = null;
+        const primaryConstraints = preferredDeviceId
+          ? { video: { deviceId: { exact: preferredDeviceId }, width: { ideal: 640 }, height: { ideal: 640 } }, audio: false }
+          : { video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } }, audio: false };
+
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(primaryConstraints);
+        } catch (firstErr) {
+          // Fallback to any available video stream
+          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        }
+
+        minimalStudio.webcamStream = stream;
+        video.srcObject = stream;
+        video.muted = true;
+        video.playsInline = true;
+        await video.play();
+
+        minimalStudio.isWebcamLive = true;
+        if (liveBadge) liveBadge.classList.remove('hidden');
+        if (toggleBtnText) toggleBtnText.textContent = 'Stop Cam';
+        statusPill.textContent = '● WEBCAM LIVE';
+        statusPill.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse';
+
+        populateCameraDevicesDropdown();
+        showToast('Webcam active! Click "Snap Frame" or "📸 SNAP → SVG → DRAW ON DOBOT".');
+      } catch (err) {
+        statusPill.textContent = 'Cam Permission Denied';
+        statusPill.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/20 text-rose-300';
+        showToast('Camera permission denied or unavailable. Use File Upload or 👨/👩/🧔 Sample Portraits!');
+      }
+    }
+
+    function stopLiveWebcamStream() {
+      const video = document.getElementById('liveWebcamVideo');
+      const liveBadge = document.getElementById('liveCamIndicator');
+      const toggleBtnText = document.getElementById('btnToggleWebcamText');
+      const statusPill = document.getElementById('webcamStatusPill');
+
+      if (minimalStudio.webcamStream) {
+        minimalStudio.webcamStream.getTracks().forEach((t) => t.stop());
+        minimalStudio.webcamStream = null;
+      }
+      if (video) video.srcObject = null;
+      minimalStudio.isWebcamLive = false;
+      if (liveBadge) liveBadge.classList.add('hidden');
+      if (toggleBtnText) toggleBtnText.textContent = 'Open Cam';
+      if (statusPill) {
+        statusPill.textContent = 'Frame Ready';
+        statusPill.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-cyan-300';
+      }
+      renderCapturePreviewCanvas();
+    }
+
+    // Continuous rAF loop that renders the live webcam stream onto #camCaptureCanvas with oval guide
+    function webcamRenderLoop() {
+      if (minimalStudio.isWebcamLive) {
+        const video = document.getElementById('liveWebcamVideo');
+        if (video && video.readyState >= 2) {
+          const snapCtx = minimalStudio.snapshotCanvas.getContext('2d');
+          const vw = video.videoWidth || 640;
+          const vh = video.videoHeight || 480;
+          const minDim = Math.min(vw, vh);
+          const sx = (vw - minDim) / 2;
+          const sy = (vh - minDim) / 2;
+
+          snapCtx.save();
+          snapCtx.translate(256, 0);
+          snapCtx.scale(-1, 1);
+          snapCtx.drawImage(video, sx, sy, minDim, minDim, 0, 0, 256, 256);
+          snapCtx.restore();
+
+          renderCapturePreviewCanvas();
+        }
+      }
+      requestAnimationFrame(webcamRenderLoop);
+    }
+
+    // Snap current frame from live webcam, vectorize to Minimal SVG, and stop live video
+    async function snapWebcamFrameNow(autoPlot = true) {
+      if (minimalStudio.isWebcamLive) {
+        const video = document.getElementById('liveWebcamVideo');
+        if (video && video.readyState >= 2) {
+          const snapCtx = minimalStudio.snapshotCanvas.getContext('2d');
+          const vw = video.videoWidth || 640;
+          const vh = video.videoHeight || 480;
+          const minDim = Math.min(vw, vh);
+          const sx = (vw - minDim) / 2;
+          const sy = (vh - minDim) / 2;
+
+          snapCtx.save();
+          snapCtx.translate(256, 0);
+          snapCtx.scale(-1, 1);
+          snapCtx.drawImage(video, sx, sy, minDim, minDim, 0, 0, 256, 256);
+          snapCtx.restore();
+
+          // Full-resolution mirrored frame for the AI model.
+          const hi = document.createElement('canvas');
+          hi.width = 768;
+          hi.height = 768;
+          const hCtx = hi.getContext('2d');
+          hCtx.save();
+          hCtx.translate(768, 0);
+          hCtx.scale(-1, 1);
+          hCtx.drawImage(video, sx, sy, minDim, minDim, 0, 0, 768, 768);
+          hCtx.restore();
+          minimalStudio.aiWebcamCanvas = hi;
+        }
+        stopLiveWebcamStream();
+      }
+
+      const ok = await generateDetailedLineArt(autoPlot);
+      if (!ok) {
+        runMinimalSVGPipeline();
+        if (autoPlot) sendMinimalSVGToDobotNow();
+        showToast('Frame captured with Quick Canny (start server.py for detailed AI).');
+      } else if (!autoPlot) {
+        showToast('Frame captured — detailed AI line art ready.');
+      }
+    }
+
+    // 1-CLICK MASTER WORKFLOW: Snap Webcam (if live) -> Minimal SVG -> Send to 3D Dobot & Start Drawing!
+    async function oneClickSnapAndDrawOnDobot() {
+      if (!minimalStudio.isWebcamLive && (!minimalStudio.strokes || minimalStudio.strokes.length === 0)) {
+        await startLiveWebcamStream();
+      }
+      if (minimalStudio.isWebcamLive) {
+        await snapWebcamFrameNow(false);
+      } else {
+        const ok = await generateDetailedLineArt(false);
+        if (!ok) runMinimalSVGPipeline();
+      }
+      sendMinimalSVGToDobotNow();
+    }
+
+    function handlePhotoFileUpload(event) {
+      const file = event.target?.files?.[0];
+      if (!file) return;
+      processUploadedFileObject(file);
+    }
+
+    function processUploadedFileObject(file, customLabel = '') {
+      stopLiveWebcamStream();
+      const fileName = customLabel || file.name || 'Uploaded_Portrait';
+      const isSVG = file.type === 'image/svg+xml' || fileName.toLowerCase().endsWith('.svg');
+
+      if (isSVG) {
+        const textReader = new FileReader();
+        textReader.onload = function (ev) {
+          const svgText = ev.target.result;
+          const parsedStrokes = parseUploadedSVGToNormalizedStrokes(svgText);
+
+          // Also rasterize SVG onto snapshotCanvas for Stage 1 visual preview
+          const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+          const url = URL.createObjectURL(svgBlob);
+          const img = new Image();
+          img.onload = function () {
+            minimalStudio.uploadedImage = img;
+            minimalStudio.photoTransform = {
+              zoom: 1.0, panX: 0, panY: 0, rotationDeg: 0, flipH: false,
+              fileName, naturalW: img.width || 256, naturalH: img.height || 256
+            };
+            updateUploadedPhotoBadgeUI(true);
+            redrawUploadedImageToSnapshotCanvas();
+            renderCapturePreviewCanvas();
+            URL.revokeObjectURL(url);
+
+            if (parsedStrokes.length > 0) {
+              minimalStudio.strokes = parsedStrokes;
+              renderMinimalSVGInteractive();
+            } else {
+              runMinimalSVGPipeline();
+            }
+
+            if (document.getElementById('chkAutoDrawOnUpload')?.checked) {
+              sendMinimalSVGToDobotNow();
+            } else {
+              showToast(`Loaded SVG "${fileName}" (${minimalStudio.strokes.length} strokes)!`);
+            }
+          };
+          img.onerror = function () {
+            URL.revokeObjectURL(url);
+            if (parsedStrokes.length > 0) {
+              minimalStudio.strokes = parsedStrokes;
+              renderMinimalSVGInteractive();
+              if (document.getElementById('chkAutoDrawOnUpload')?.checked) {
+                sendMinimalSVGToDobotNow();
+              }
+            }
+          };
+          img.src = url;
+        };
+        textReader.readAsText(file);
+        return;
+      }
+
+      // Standard Raster Image Upload (.JPG, .PNG, .WEBP, .BMP)
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = new Image();
+        img.onload = async function () {
+          minimalStudio.uploadedImage = img;
+          minimalStudio.aiWebcamCanvas = null;
+          minimalStudio.photoTransform = {
+            zoom: 1.0,
+            panX: 0,
+            panY: 0,
+            rotationDeg: 0,
+            flipH: false,
+            fileName,
+            naturalW: img.width,
+            naturalH: img.height
+          };
+          const zoomSlider = document.getElementById('sliderPhotoZoom');
+          if (zoomSlider) zoomSlider.value = '1.0';
+          document.getElementById('valPhotoZoom').textContent = '1.0x';
+
+          updateUploadedPhotoBadgeUI(true);
+          redrawUploadedImageToSnapshotCanvas();
+          renderCapturePreviewCanvas();
+
+          const statusPill = document.getElementById('webcamStatusPill');
+          if (statusPill) {
+            statusPill.textContent = '📂 PHOTO LOADED';
+            statusPill.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40';
+          }
+
+          const autoDraw = !!document.getElementById('chkAutoDrawOnUpload')?.checked;
+          const ok = await generateDetailedLineArt(autoDraw);
+          if (!ok) {
+            // Server off or model missing: keep the instant Canny fallback.
+            runMinimalSVGPipeline();
+            if (autoDraw) sendMinimalSVGToDobotNow();
+            showToast(`Photo "${fileName}" vectorized with Quick Canny (${minimalStudio.strokes.length} strokes). Start server.py for detailed AI.`);
+          } else if (!autoDraw) {
+            showToast(`✨ Photo "${fileName}" converted to detailed AI line art. Drag Stage 1 to re-frame, then Generate again.`);
+          }
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function updateUploadedPhotoBadgeUI(show) {
+      const badge = document.getElementById('uploadedPhotoBadge');
+      if (!badge) return;
+      if (show && minimalStudio.uploadedImage) {
+        badge.classList.remove('hidden');
+        badge.classList.add('flex');
+        document.getElementById('uploadedPhotoName').textContent = minimalStudio.photoTransform.fileName || 'UPLOADED PHOTO';
+        document.getElementById('uploadedPhotoDims').textContent = `${minimalStudio.photoTransform.naturalW}×${minimalStudio.photoTransform.naturalH}`;
+      } else {
+        badge.classList.add('hidden');
+        badge.classList.remove('flex');
+      }
+    }
+
+    // Parse direct .SVG uploads (<path>, <polyline>, <line>, <circle>, <rect>) into normalized [-0.84, 0.84] plotter strokes
+    function parseUploadedSVGToNormalizedStrokes(svgText) {
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(svgText, 'image/svg+xml');
+        const svgEl = doc.querySelector('svg');
+        if (!svgEl) return [];
+
+        const tempDiv = document.createElement('div');
+        tempDiv.style.position = 'absolute';
+        tempDiv.style.visibility = 'hidden';
+        tempDiv.style.width = '256px';
+        tempDiv.style.height = '256px';
+        document.body.appendChild(tempDiv);
+        tempDiv.appendChild(svgEl);
+
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        const rawPolylines = [];
+
+        const geomEls = svgEl.querySelectorAll('path, polyline, polygon, line, rect, circle, ellipse');
+        geomEls.forEach((el) => {
+          if (typeof el.getTotalLength === 'function') {
+            const len = el.getTotalLength();
+            if (len > 2) {
+              const steps = Math.min(80, Math.max(4, Math.ceil(len / 4)));
+              const pts = [];
+              for (let i = 0; i <= steps; i++) {
+                const pt = el.getPointAtLength((i / steps) * len);
+                pts.push({ x: pt.x, y: pt.y });
+                if (pt.x < minX) minX = pt.x;
+                if (pt.y < minY) minY = pt.y;
+                if (pt.x > maxX) maxX = pt.x;
+                if (pt.y > maxY) maxY = pt.y;
+              }
+              rawPolylines.push(pts);
+            }
+          }
+        });
+
+        document.body.removeChild(tempDiv);
+        if (rawPolylines.length === 0) return [];
+
+        const span = Math.max(1e-3, Math.max(maxX - minX, maxY - minY));
+        const cx = (minX + maxX) / 2;
+        const cy = (minY + maxY) / 2;
+        const maxCap = parseInt(document.getElementById('sliderMaxStrokes')?.value || '48', 10);
+
+        return rawPolylines
+          .slice(0, maxCap)
+          .map((poly) =>
+            simplifyPathRDP(
+              poly.map((p) => ({
+                x: ((p.x - cx) / span) * 1.64,
+                y: ((p.y - cy) / span) * 1.64
+              })),
+              0.015
+            )
+          )
+          .filter((s) => s.length >= 2);
+      } catch (e) {
+        return [];
+      }
+    }
+
+    // 3 Built-In High-Contrast Procedural Test Portraits ('male', 'female', 'glasses')
+    function loadProceduralPortrait(style = 'male') {
+      stopLiveWebcamStream();
+      minimalStudio.uploadedImage = null;
+      minimalStudio.aiWebcamCanvas = null;
+      updateUploadedPhotoBadgeUI(false);
+      const ctx = minimalStudio.snapshotCanvas.getContext('2d');
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(0, 0, 256, 256);
+
+      ctx.save();
+      ctx.strokeStyle = '#0f172a';
+      ctx.fillStyle = '#e2e8f0';
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Neck & Shoulders
+      ctx.lineWidth = 4.5;
+      ctx.beginPath();
+      ctx.moveTo(48, 246);
+      ctx.quadraticCurveTo(80, 215, 98, 195);
+      ctx.lineTo(98, 168);
+      ctx.lineTo(158, 168);
+      ctx.lineTo(158, 195);
+      ctx.quadraticCurveTo(176, 215, 208, 246);
+      ctx.stroke();
+
+      // Head Contour
+      ctx.lineWidth = 5.0;
+      ctx.beginPath();
+      ctx.moveTo(76, 106);
+      ctx.quadraticCurveTo(76, 158, 100, 182);
+      ctx.quadraticCurveTo(128, 202, 156, 182);
+      ctx.quadraticCurveTo(180, 158, 180, 106);
+      ctx.quadraticCurveTo(180, 56, 128, 56);
+      ctx.quadraticCurveTo(76, 56, 76, 106);
+      ctx.fill();
+      ctx.stroke();
+
+      if (style === 'female') {
+        // Flowing long hair waves
+        ctx.lineWidth = 5.2;
+        ctx.beginPath();
+        ctx.moveTo(128, 48);
+        ctx.quadraticCurveTo(64, 52, 58, 128);
+        ctx.quadraticCurveTo(54, 185, 68, 232);
+        ctx.moveTo(128, 48);
+        ctx.quadraticCurveTo(192, 52, 198, 128);
+        ctx.quadraticCurveTo(202, 185, 188, 232);
+        ctx.stroke();
+
+        // Bangs part
+        ctx.lineWidth = 4.0;
+        ctx.beginPath();
+        ctx.moveTo(78, 94);
+        ctx.quadraticCurveTo(108, 72, 128, 56);
+        ctx.quadraticCurveTo(148, 72, 178, 94);
+        ctx.stroke();
+      } else {
+        // Short sculpted hair wave
+        ctx.lineWidth = 5.2;
+        ctx.beginPath();
+        ctx.moveTo(72, 108);
+        ctx.quadraticCurveTo(60, 68, 88, 44);
+        ctx.quadraticCurveTo(128, 24, 168, 42);
+        ctx.quadraticCurveTo(194, 64, 182, 108);
+        ctx.stroke();
+
+        ctx.lineWidth = 3.8;
+        ctx.beginPath();
+        ctx.moveTo(80, 78);
+        ctx.quadraticCurveTo(116, 54, 158, 66);
+        ctx.stroke();
+      }
+
+      // Eyebrows
+      ctx.lineWidth = 4.6;
+      ctx.beginPath();
+      ctx.moveTo(90, 100);
+      ctx.quadraticCurveTo(104, 92, 118, 98);
+      ctx.moveTo(138, 98);
+      ctx.quadraticCurveTo(152, 92, 166, 100);
+      ctx.stroke();
+
+      // Eyes
+      ctx.lineWidth = 3.6;
+      ctx.beginPath();
+      ctx.moveTo(92, 114);
+      ctx.quadraticCurveTo(104, 106, 116, 114);
+      ctx.quadraticCurveTo(104, 120, 92, 114);
+      ctx.moveTo(140, 114);
+      ctx.quadraticCurveTo(152, 106, 164, 114);
+      ctx.quadraticCurveTo(152, 120, 140, 114);
+      ctx.stroke();
+
+      // Pupils
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(104, 113, 3.8, 0, Math.PI * 2);
+      ctx.arc(152, 113, 3.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (style === 'glasses') {
+        // Eyeglasses frames + bridge
+        ctx.lineWidth = 4.2;
+        ctx.strokeRect(84, 102, 38, 24);
+        ctx.strokeRect(134, 102, 38, 24);
+        ctx.beginPath();
+        ctx.moveTo(122, 112);
+        ctx.lineTo(134, 112);
+        ctx.stroke();
+
+        // Beard & Mustache contour
+        ctx.lineWidth = 4.2;
+        ctx.beginPath();
+        ctx.moveTo(98, 156);
+        ctx.quadraticCurveTo(128, 144, 158, 156);
+        ctx.moveTo(84, 148);
+        ctx.quadraticCurveTo(96, 184, 128, 194);
+        ctx.quadraticCurveTo(160, 184, 172, 148);
+        ctx.stroke();
+      }
+
+      // Nose Bridge & Tip
+      ctx.lineWidth = 3.8;
+      ctx.beginPath();
+      ctx.moveTo(126, 104);
+      ctx.lineTo(123, 138);
+      ctx.quadraticCurveTo(128, 144, 136, 139);
+      ctx.stroke();
+
+      // Lips
+      ctx.lineWidth = 4.0;
+      ctx.beginPath();
+      ctx.moveTo(108, 160);
+      ctx.quadraticCurveTo(128, 154, 148, 160);
+      ctx.quadraticCurveTo(128, 168, 108, 160);
+      ctx.stroke();
+
+      ctx.restore();
+      runMinimalSVGPipeline();
+    }
+
+    // Render Stage 1 Capture Canvas with Contrast & Optional Portrait Oval Vignette Mask
+    function renderCapturePreviewCanvas() {
+      const dst = document.getElementById('camCaptureCanvas');
+      if (!dst || !minimalStudio.snapshotCanvas) return null;
+      const ctx = dst.getContext('2d');
+      const w = 256, h = 256;
+
+      const off = document.createElement('canvas');
+      off.width = w;
+      off.height = h;
+      const oCtx = off.getContext('2d');
+      oCtx.drawImage(minimalStudio.snapshotCanvas, 0, 0, w, h);
+
+      const brightness = parseInt(document.getElementById('sliderCamBrightness')?.value || '0', 10);
+      const contrast = parseInt(document.getElementById('sliderCamContrast')?.value || '18', 10);
+      const useOvalMask = document.getElementById('chkOvalMask')?.checked;
+
+      const imgData = oCtx.getImageData(0, 0, w, h);
+      const d = imgData.data;
+      const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const idx = (y * w + x) * 4;
+          // If Oval Portrait Mask is enabled, fade pixels outside the portrait ellipse to pure white
+          if (useOvalMask) {
+            const nx = (x - 128) / 106;
+            const ny = (y - 130) / 118;
+            const r2 = nx * nx + ny * ny;
+            if (r2 > 1.0) {
+              d[idx] = 255;
+              d[idx + 1] = 255;
+              d[idx + 2] = 255;
+              continue;
+            }
+          }
+          for (let c = 0; c < 3; c++) {
+            const v = factor * (d[idx + c] + brightness - 128) + 128;
+            d[idx + c] = Math.max(0, Math.min(255, v));
+          }
+        }
+      }
+      oCtx.putImageData(imgData, 0, 0);
+
+      // Draw onto visible 320x320 Capture Canvas + subtle oval guide overlay
+      ctx.clearRect(0, 0, dst.width, dst.height);
+      ctx.drawImage(off, 0, 0, dst.width, dst.height);
+
+      if (useOvalMask) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(0, 229, 255, 0.45)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.ellipse(dst.width / 2, dst.height * 0.51, dst.width * 0.41, dst.height * 0.45, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      return imgData;
+    }
+
+    function applyMinimalismPreset(preset) {
+      ['ultra', 'clean', 'detail'].forEach((k) => {
+        const b = document.getElementById(`minPreset-${k}`);
+        if (!b) return;
+        b.className = k === preset
+          ? 'py-1.5 px-1 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold transition'
+          : 'py-1.5 px-1 rounded-lg bg-rg-bg text-slate-300 border border-rg-border text-[10px] font-medium transition';
+      });
+
+      if (preset === 'ultra') {
+        document.getElementById('sliderMaxStrokes').value = 28;
+        document.getElementById('sliderRdpEps').value = 2.6;
+        document.getElementById('sliderCannyHigh').value = 48;
+        document.getElementById('sliderStitchGap').value = 8;
+        document.getElementById('sliderMinPathLen').value = 12;
+      } else if (preset === 'clean') {
+        document.getElementById('sliderMaxStrokes').value = 48;
+        document.getElementById('sliderRdpEps').value = 1.8;
+        document.getElementById('sliderCannyHigh').value = 56;
+        document.getElementById('sliderStitchGap').value = 6;
+        document.getElementById('sliderMinPathLen').value = 8;
+      } else if (preset === 'detail') {
+        document.getElementById('sliderMaxStrokes').value = 82;
+        document.getElementById('sliderRdpEps').value = 1.1;
+        document.getElementById('sliderCannyHigh').value = 68;
+        document.getElementById('sliderStitchGap').value = 4;
+        document.getElementById('sliderMinPathLen').value = 5;
+      }
+      onMinimalParamsChange();
+    }
+
+    function onMinimalParamsChange() {
+      document.getElementById('valMaxStrokes').textContent = document.getElementById('sliderMaxStrokes').value;
+      document.getElementById('valRdpEps').textContent = `${parseFloat(document.getElementById('sliderRdpEps').value).toFixed(1)} px`;
+      document.getElementById('valCannyHigh').textContent = document.getElementById('sliderCannyHigh').value;
+      document.getElementById('valStitchGap').textContent = `${document.getElementById('sliderStitchGap').value} px`;
+      document.getElementById('valSmoothPass').textContent = `${document.getElementById('sliderSmoothPass').value}x`;
+      const bVal = parseInt(document.getElementById('sliderCamBrightness')?.value || '0', 10);
+      if (document.getElementById('valCamBrightness')) {
+        document.getElementById('valCamBrightness').textContent = bVal > 0 ? `+${bVal}` : `${bVal}`;
+      }
+      const cVal = parseInt(document.getElementById('sliderCamContrast').value, 10);
+      document.getElementById('valCamContrast').textContent = cVal >= 0 ? `+${cVal}` : `${cVal}`;
+      document.getElementById('valMinPathLen').textContent = `${document.getElementById('sliderMinPathLen').value}px`;
+
+      runMinimalSVGPipeline();
+    }
+
+    // MAIN 5-STAGE ULTRA-MINIMALIST SVG VECTORIZATION PIPELINE
+    function runMinimalSVGPipeline() {
+      const engineBadge = document.getElementById('engineActiveBadge');
+      if (engineBadge) {
+        engineBadge.textContent = 'Canny NMS';
+        engineBadge.className = 'text-[9px] font-mono px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-500/30';
+      }
+      const imgData = renderCapturePreviewCanvas();
+      if (!imgData) return;
+
+      const w = 256, h = 256;
+      const data = imgData.data;
+      let gray = new Float32Array(w * h);
+
+      for (let i = 0; i < w * h; i++) {
+        gray[i] = 0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2];
+      }
+
+      // STAGE A: Multi-Pass Gaussian Smoothing (Suppresses skin texture & webcam grain)
+      const smoothPasses = parseInt(document.getElementById('sliderSmoothPass')?.value || '2', 10);
+      for (let p = 0; p < smoothPasses; p++) {
+        const next = new Float32Array(w * h);
+        next.set(gray);
+        for (let y = 1; y < h - 1; y++) {
+          for (let x = 1; x < w - 1; x++) {
+            const idx = y * w + x;
+            next[idx] =
+              (gray[(y - 1) * w + (x - 1)] + 2 * gray[(y - 1) * w + x] + gray[(y - 1) * w + (x + 1)] +
+               2 * gray[y * w + (x - 1)] + 4 * gray[y * w + x] + 2 * gray[y * w + (x + 1)] +
+               gray[(y + 1) * w + (x - 1)] + 2 * gray[(y + 1) * w + x] + gray[(y + 1) * w + (x + 1)]) / 16;
+          }
+        }
+        gray = next;
+      }
+
+      // STAGE B & C: Sobel Gradients + True Canny Non-Maximum Suppression (NMS) + Dark-Ridge Detector
+      const mag = new Float32Array(w * h);
+      const ang = new Float32Array(w * h);
+      for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+          const idx = y * w + x;
+          const gx =
+            -gray[(y - 1) * w + (x - 1)] + gray[(y - 1) * w + (x + 1)] +
+            -2 * gray[y * w + (x - 1)] + 2 * gray[y * w + (x + 1)] +
+            -gray[(y + 1) * w + (x - 1)] + gray[(y + 1) * w + (x + 1)];
+          const gy =
+            -gray[(y - 1) * w + (x - 1)] - 2 * gray[(y - 1) * w + x] - gray[(y - 1) * w + (x + 1)] +
+            gray[(y + 1) * w + (x - 1)] + 2 * gray[(y + 1) * w + x] + gray[(y + 1) * w + (x + 1)];
+          mag[idx] = Math.hypot(gx, gy);
+          ang[idx] = Math.atan2(gy, gx);
+        }
+      }
+
+      const sensitivity = parseInt(document.getElementById('sliderCannyHigh')?.value || '52', 10);
+      const highThresh = (112 - sensitivity) * 2.15;
+      const bin = new Uint8Array(w * h);
+
+      for (let y = 3; y < h - 3; y++) {
+        for (let x = 3; x < w - 3; x++) {
+          const idx = y * w + x;
+          const m = mag[idx];
+
+          // Also detect clean dark ink ridges (local valley in luminance)
+          const localAvg = (gray[(y - 2) * w + x] + gray[(y + 2) * w + x] + gray[y * w + (x - 2)] + gray[y * w + (x + 2)]) * 0.25;
+          const isDarkValley = (localAvg - gray[idx] > (110 - sensitivity) * 0.34) && gray[idx] < 135;
+
+          if (m >= highThresh) {
+            let deg = (ang[idx] * 180) / Math.PI;
+            if (deg < 0) deg += 180;
+            let m1 = 0, m2 = 0;
+            if ((deg >= 0 && deg < 22.5) || deg >= 157.5) {
+              m1 = mag[idx - 1];
+              m2 = mag[idx + 1];
+            } else if (deg >= 22.5 && deg < 67.5) {
+              m1 = mag[(y - 1) * w + (x + 1)];
+              m2 = mag[(y + 1) * w + (x - 1)];
+            } else if (deg >= 67.5 && deg < 112.5) {
+              m1 = mag[(y - 1) * w + x];
+              m2 = mag[(y + 1) * w + x];
+            } else {
+              m1 = mag[(y - 1) * w + (x - 1)];
+              m2 = mag[(y + 1) * w + (x + 1)];
+            }
+            if (m >= m1 && m >= m2) bin[idx] = 1;
+          } else if (isDarkValley) {
+            bin[idx] = 1;
+          }
+        }
+      }
+
+      // Zhang-Suen Morphological Skeletonization (guarantees strictly 1-pixel centerlines)
+      zhangSuenThinning(bin, w, h, 8);
+
+      // Render Stage 2 Skeleton Canvas (`#skeletonPreviewCanvas`)
+      const skelCanvas = document.getElementById('skeletonPreviewCanvas');
+      if (skelCanvas) {
+        const sCtx = skelCanvas.getContext('2d');
+        const off = document.createElement('canvas');
+        off.width = w;
+        off.height = h;
+        const oCtx = off.getContext('2d');
+        const outImg = oCtx.createImageData(w, h);
+        for (let i = 0; i < w * h; i++) {
+          const c = bin[i] ? 12 : 255;
+          outImg.data[i * 4] = c;
+          outImg.data[i * 4 + 1] = c;
+          outImg.data[i * 4 + 2] = c;
+          outImg.data[i * 4 + 3] = 255;
+        }
+        oCtx.putImageData(outImg, 0, 0);
+        sCtx.fillStyle = '#ffffff';
+        sCtx.fillRect(0, 0, skelCanvas.width, skelCanvas.height);
+        sCtx.drawImage(off, 0, 0, skelCanvas.width, skelCanvas.height);
+      }
+
+      // STAGE D: Trace 1px Skeleton Chains + Collinear Gap Stitching
+      const minPathLen = parseInt(document.getElementById('sliderMinPathLen')?.value || '10', 10);
+      const stitchGap = parseInt(document.getElementById('sliderStitchGap')?.value || '7', 10);
+      const rdpEps = parseFloat(document.getElementById('sliderRdpEps')?.value || '2.2');
+      const maxStrokesCap = parseInt(document.getElementById('sliderMaxStrokes')?.value || '34', 10);
+
+      let chains = traceSkeletonChains(bin, w, h, minPathLen);
+
+      if (stitchGap > 0 && chains.length > 1) {
+        chains = stitchNearbyCollinearStrokes(chains, stitchGap);
+      }
+
+      // STAGE E: Centrality-Weighted Top-K Stroke Filter ("MAX STROKES CAP")
+      // Scores each contour by arc length * facial-center importance so eyes/nose/mouth/jaw are always kept!
+      chains = chains
+        .map((c) => {
+          let arcLen = 0;
+          let sumX = 0, sumY = 0;
+          for (let i = 0; i < c.length; i++) {
+            sumX += c[i].x;
+            sumY += c[i].y;
+            if (i > 0) arcLen += Math.hypot(c[i].x - c[i - 1].x, c[i].y - c[i - 1].y);
+          }
+          const cx = sumX / c.length;
+          const cy = sumY / c.length;
+          const distFromFaceCenter = Math.hypot((cx - 128) / 128, (cy - 125) / 128);
+          const centerWeight = 1.35 - Math.min(0.65, distFromFaceCenter * 0.65);
+          return { pts: c, score: arcLen * centerWeight };
+        })
+        .sort((a, b) => b.score - a.score)
+        .slice(0, maxStrokesCap)
+        .map((item) => item.pts);
+
+      // Simplify with Ramer-Douglas-Peucker + subtle 1-pass Chaikin corner smoothing
+      let simplified = chains
+        .map((c) => simplifyPathRDP(c, rdpEps))
+        .filter((c) => c.length >= 2)
+        .map((c) => chaikinSmoothStroke(c));
+
+      // Order strokes via Nearest-Neighbor + 2-Opt TSP to minimize Dobot Pen-Up travel
+      if (simplified.length > 1) {
+        simplified = orderStrokesNearestNeighbor(simplified);
+      }
+
+      minimalStudio.erasedStack = [];
+      document.getElementById('btnUndoErase').disabled = true;
+
+      minimalStudio.strokes = simplified.map((s) =>
+        s.map((pt) => ({
+          x: ((pt.x / w) * 2 - 1) * 0.84,
+          y: ((pt.y / h) * 2 - 1) * 0.84
+        }))
+      );
+
+      renderMinimalSVGInteractive();
+    }
+
+    // Joins stroke endpoints that are within `maxGapPx` so Dobot doesn't lift the pen unnecessarily
+    function stitchNearbyCollinearStrokes(chains, maxGapPx) {
+      const list = chains.map((c) => c.slice());
+      let mergedAny = true;
+      while (mergedAny) {
+        mergedAny = false;
+        outer: for (let i = 0; i < list.length; i++) {
+          for (let j = i + 1; j < list.length; j++) {
+            const A = list[i];
+            const B = list[j];
+            const aHead = A[0], aTail = A[A.length - 1];
+            const bHead = B[0], bTail = B[B.length - 1];
+
+            if (Math.hypot(aTail.x - bHead.x, aTail.y - bHead.y) <= maxGapPx) {
+              list[i] = A.concat(B);
+              list.splice(j, 1);
+              mergedAny = true;
+              break outer;
+            }
+            if (Math.hypot(aTail.x - bTail.x, aTail.y - bTail.y) <= maxGapPx) {
+              list[i] = A.concat(B.slice().reverse());
+              list.splice(j, 1);
+              mergedAny = true;
+              break outer;
+            }
+            if (Math.hypot(aHead.x - bTail.x, aHead.y - bTail.y) <= maxGapPx) {
+              list[i] = B.concat(A);
+              list.splice(j, 1);
+              mergedAny = true;
+              break outer;
+            }
+          }
+        }
+      }
+      return list;
+    }
+
+    // 1-pass Chaikin Curve Smoothing (keeps vertex count low while rounding sharp RDP corners)
+    function chaikinSmoothStroke(pts) {
+      if (pts.length <= 3) return pts;
+      const out = [pts[0]];
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[i];
+        const p1 = pts[i + 1];
+        out.push({ x: 0.75 * p0.x + 0.25 * p1.x, y: 0.75 * p0.y + 0.25 * p1.y });
+        out.push({ x: 0.25 * p0.x + 0.75 * p1.x, y: 0.25 * p0.y + 0.75 * p1.y });
+      }
+      out.push(pts[pts.length - 1]);
+      return simplifyPathRDP(out, 0.9);
+    }
+
+    // Render Stage 3 Interactive Minimal SVG (Click any stroke to erase it!)
+    function renderMinimalSVGInteractive() {
+      const container = document.getElementById('interactiveSvgContainer');
+      if (!container) return;
+
+      const strokes = minimalStudio.strokes;
+      const showJumps = document.getElementById('chkShowTravelJumps')?.checked;
+
+      let totalPts = 0;
+      let totalMm = 0;
+      let jumpLines = '';
+      let drawPaths = '';
+      let exportPaths = '';
+      let prevEnd = null;
+
+      strokes.forEach((stroke, sIdx) => {
+        if (stroke.length < 2) return;
+        totalPts += stroke.length;
+
+        const svgPts = stroke.map((p) => ({
+          x: ((p.x / 0.84) * 0.5 + 0.5) * 232 + 12,
+          y: ((p.y / 0.84) * 0.5 + 0.5) * 232 + 12
+        }));
+
+        if (prevEnd && showJumps) {
+          jumpLines += `<line x1="${prevEnd.x.toFixed(1)}" y1="${prevEnd.y.toFixed(1)}" x2="${svgPts[0].x.toFixed(1)}" y2="${svgPts[0].y.toFixed(1)}" stroke="#f59e0b" stroke-width="0.9" stroke-dasharray="3,3" opacity="0.55" pointer-events="none" />`;
+        }
+        if (prevEnd) {
+          const pA = paperNormToRobotXY(prevEnd.nx, prevEnd.ny);
+          const pB = paperNormToRobotXY(stroke[0].x, stroke[0].y);
+          totalMm += Math.hypot(pB.rx - pA.rx, pB.ry - pA.ry);
+        }
+
+        let d = `M ${svgPts[0].x.toFixed(1)} ${svgPts[0].y.toFixed(1)}`;
+        for (let i = 1; i < svgPts.length; i++) {
+          d += ` L ${svgPts[i].x.toFixed(1)} ${svgPts[i].y.toFixed(1)}`;
+          const pA = paperNormToRobotXY(stroke[i - 1].x, stroke[i - 1].y);
+          const pB = paperNormToRobotXY(stroke[i].x, stroke[i].y);
+          totalMm += Math.hypot(pB.rx - pA.rx, pB.ry - pA.ry);
+        }
+
+        // Interactive stroke path with hover highlight & click-to-erase
+        drawPaths += `<path d="${d}" onclick="eraseMinimalStrokeAt(${sIdx})" fill="none" stroke="#0f172a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="hover:stroke-rose-500 hover:stroke-[4px] transition-all cursor-pointer"><title>Click to erase Stroke #${sIdx + 1}</title></path>\n`;
+        exportPaths += `  <path d="${d}" fill="none" stroke="#000000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />\n`;
+
+        const last = svgPts[svgPts.length - 1];
+        const lastRaw = stroke[stroke.length - 1];
+        prevEnd = { x: last.x, y: last.y, nx: lastRaw.x, ny: lastRaw.y };
+      });
+
+      container.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" class="w-full h-full">
+  <rect width="256" height="256" fill="#ffffff"/>
+  <rect x="10" y="10" width="236" height="236" fill="none" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="4,4"/>
+  ${jumpLines}
+  ${drawPaths}
+</svg>`;
+
+      minimalStudio.svgString = `<?xml version="1.0" encoding="UTF-8"?>
+<!-- RoboGenius ENSA Fes - Ultra-Minimal Dobot Magician Plot (${strokes.length} strokes, ${totalPts} vertices) -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="130mm" height="130mm">
+${exportPaths}</svg>`;
+
+      const estSec = Math.max(4, Math.round(totalMm / 42));
+      const summaryEl = document.getElementById('minimalTelemetrySummary');
+      if (summaryEl) {
+        summaryEl.textContent = `${strokes.length} strokes • ${totalPts} pts • ~${estSec}s plot`;
+      }
+    }
+
+    function eraseMinimalStrokeAt(idx) {
+      if (idx < 0 || idx >= minimalStudio.strokes.length) return;
+      const removed = minimalStudio.strokes.splice(idx, 1)[0];
+      minimalStudio.erasedStack.push({ idx, stroke: removed });
+      document.getElementById('btnUndoErase').disabled = false;
+      renderMinimalSVGInteractive();
+      showToast(`Erased Stroke #${idx + 1} (${minimalStudio.strokes.length} strokes remaining)`);
+    }
+
+    function undoLastErasedStroke() {
+      if (minimalStudio.erasedStack.length === 0) return;
+      const last = minimalStudio.erasedStack.pop();
+      minimalStudio.strokes.splice(last.idx, 0, last.stroke);
+      if (minimalStudio.erasedStack.length === 0) {
+        document.getElementById('btnUndoErase').disabled = true;
+      }
+      renderMinimalSVGInteractive();
+    }
+
+    function sendMinimalSVGToDobotNow() {
+      if (!minimalStudio.strokes || minimalStudio.strokes.length === 0) {
+        runMinimalSVGPipeline();
+      }
+      plotterState.currentPreset = 'custom';
+      plotterState.strokes = minimalStudio.strokes.map((s) => s.slice());
+      document.getElementById('activePresetLabel').textContent = `Minimal AI (${plotterState.strokes.length} strk)`;
+
+      resetPaperCanvasBackground();
+      buildMotionQueueFromStrokes(plotterState.strokes);
+      rebuild3DToolpathLines();
+
+      plotterState.isPlaying = true;
+      updatePlayPauseButtonUI();
+      showToast(`Plotting ${plotterState.strokes.length} ultra-minimal strokes on the 3D Dobot Magician!`);
+    }
+
+    /***************************************************************************
+     * LOCAL AI LINE ART (Informative Drawings ONNX via server.py)
+     ***************************************************************************/
+    async function checkAiServer() {
+      try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 2000);
+        const res = await fetch('/api/health', { signal: ctrl.signal, cache: 'no-store' });
+        clearTimeout(timer);
+        const data = await res.json();
+        minimalStudio.aiServerReady = !!(res.ok && data.ok && data.model_ready);
+      } catch (e) {
+        minimalStudio.aiServerReady = false;
+      }
+      updateAiStatusPill();
+      return minimalStudio.aiServerReady;
+    }
+
+    function updateAiStatusPill() {
+      const pill = document.getElementById('aiEngineStatus');
+      if (!pill) return;
+      if (minimalStudio.aiServerReady) {
+        pill.textContent = 'LOCAL AI READY';
+        pill.className = 'text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/40';
+        pill.title = 'Local Informative Drawings engine is ready';
+      } else {
+        pill.textContent = 'SERVER OFF';
+        pill.className = 'text-[9px] font-mono px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-300 border border-rose-500/40';
+        pill.title = 'Run: .venv\\Scripts\\python.exe "svg gen\\server.py"';
+      }
+    }
+
+    // Rebuild the framed portrait at high resolution for the AI model.
+    // The 256px snapshot canvas is only a UI preview; this keeps eyes/hair sharp.
+    function renderSnapshotForAI(size = 768) {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, size, size);
+
+      if (minimalStudio.aiWebcamCanvas) {
+        ctx.drawImage(minimalStudio.aiWebcamCanvas, 0, 0, size, size);
+      } else if (minimalStudio.uploadedImage) {
+        const img = minimalStudio.uploadedImage;
+        const { zoom, panX, panY, rotationDeg, flipH } = minimalStudio.photoTransform;
+        const untouched = zoom === 1 && panX === 0 && panY === 0 && rotationDeg === 0 && !flipH;
+        if (untouched) {
+          // Send the whole photo; the backend detects the face and crops to a
+          // head-and-shoulders portrait itself, so a tall photo is not clipped.
+          const fit = Math.min(size / img.width, size / img.height);
+          ctx.drawImage(
+            img,
+            (size - img.width * fit) / 2,
+            (size - img.height * fit) / 2,
+            img.width * fit,
+            img.height * fit
+          );
+        } else {
+          const minDim = Math.min(img.width, img.height);
+          const scale = (size / minDim) * zoom;
+          ctx.save();
+          ctx.translate(size / 2 + panX * (size / 256), size / 2 + panY * (size / 256));
+          ctx.rotate((rotationDeg * Math.PI) / 180);
+          ctx.scale(flipH ? -scale : scale, scale);
+          ctx.drawImage(img, -img.width / 2, -img.height / 2);
+          ctx.restore();
+        }
+      } else if (minimalStudio.snapshotCanvas) {
+        ctx.drawImage(minimalStudio.snapshotCanvas, 0, 0, size, size);
+      }
+      return canvas;
+    }
+
+    function drawAiLinePreview(dataUrl) {
+      const cv = document.getElementById('skeletonPreviewCanvas');
+      if (!cv || !dataUrl) return;
+      const ctx = cv.getContext('2d');
+      const img = new Image();
+      img.onload = function () {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, cv.width, cv.height);
+        const scale = Math.min(cv.width / img.width, cv.height / img.height);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        ctx.drawImage(img, (cv.width - w) / 2, (cv.height - h) / 2, w, h);
+      };
+      img.src = dataUrl;
+    }
+
+    async function generateDetailedLineArt(autoPlot = false) {
+      if (minimalStudio.aiBusy) {
+        showToast('AI line art is already running — please wait.');
+        return false;
+      }
+      if (!minimalStudio.aiServerReady && !(await checkAiServer())) {
+        showToast('Local AI server is off. Run: .venv\\Scripts\\python.exe "svg gen\\server.py"');
+        return false;
+      }
+
+      const level = document.getElementById('aiDetailLevel')?.value || 'balanced';
+      const presets = {
+        fast: { size: 640, threshold: 155, head_threshold: 205, min_length: 15, head_min_length: 4, max_strokes: 200, rdp_eps: 0.9, smoothing: 2 },
+        balanced: { size: 768, threshold: 150, head_threshold: 210, min_length: 18, head_min_length: 4, max_strokes: 320, rdp_eps: 1.0, smoothing: 2 },
+        max: { size: 896, threshold: 150, head_threshold: 215, min_length: 20, head_min_length: 4, max_strokes: 360, rdp_eps: 1.1, smoothing: 2 }
+      };
+      const p = presets[level] || presets.balanced;
+
+      const spinner = document.getElementById('hfCloudSpinner');
+      const spinnerText = document.getElementById('hfSpinnerText');
+      const btnA = document.getElementById('btnGenerateLineArt');
+      const btnB = document.getElementById('btnAiDetailStage');
+      minimalStudio.aiBusy = true;
+      if (btnA) btnA.disabled = true;
+      if (btnB) btnB.disabled = true;
+      if (spinner) {
+        spinner.classList.remove('hidden');
+        spinner.classList.add('flex');
+      }
+      if (spinnerText) spinnerText.textContent = `Generating detailed line art at ${p.size}px…`;
+
+      try {
+        const canvas = renderSnapshotForAI(p.size);
+        const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
+        if (!blob) throw new Error('Could not encode the framed photo.');
+
+        const query = new URLSearchParams({
+          size: String(p.size),
+          threshold: String(p.threshold),
+          texture_threshold: '112',
+          head_threshold: String(p.head_threshold),
+          line_gamma: '1.5',
+          min_length: String(p.min_length),
+          head_min_length: String(p.head_min_length),
+          max_strokes: String(p.max_strokes),
+          rdp_eps: String(p.rdp_eps),
+          smoothing: String(p.smoothing)
+        });
+
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 180000);
+        const res = await fetch('/api/lineart?' + query.toString(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'image/png' },
+          body: blob,
+          signal: ctrl.signal
+        });
+        clearTimeout(timer);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || `server status ${res.status}`);
+        }
+
+        // API strokes are arrays of [x, y] pairs; the studio stores arrays of
+        // {x, y} point objects (one array per pen-down stroke).
+        minimalStudio.strokes = (data.strokes || [])
+          .map((stroke) => (stroke || []).map(([x, y]) => ({ x, y })))
+          .filter((stroke) => stroke.length >= 2);
+        if (minimalStudio.strokes.length < 2) {
+          throw new Error('the model returned too few strokes');
+        }
+        minimalStudio.erasedStack = [];
+        const undoBtn = document.getElementById('btnUndoErase');
+        if (undoBtn) undoBtn.disabled = true;
+        minimalStudio.strokes = orderStrokesNearestNeighbor(minimalStudio.strokes);
+        renderMinimalSVGInteractive();
+        drawAiLinePreview(data.preview_png);
+
+        const badge = document.getElementById('engineActiveBadge');
+        if (badge) {
+          badge.textContent = 'AI Line Art ✓';
+          badge.className = 'text-[9px] font-mono px-1.5 py-0.5 rounded bg-fuchsia-500/15 text-fuchsia-300 border border-fuchsia-500/40';
+        }
+        showToast(`✨ Detailed line art: ${data.stroke_count || minimalStudio.strokes.length} strokes, ${data.point_count || 0} points in ${data.seconds || '—'}s.`);
+
+        if (autoPlot) {
+          sendMinimalSVGToDobotNow();
+        }
+        return true;
+      } catch (err) {
+        const msg = err?.name === 'AbortError' ? 'request timed out' : (err?.message || String(err));
+        showToast(`AI line art failed: ${msg}`);
+        return false;
+      } finally {
+        minimalStudio.aiBusy = false;
+        if (btnA) btnA.disabled = false;
+        if (btnB) btnB.disabled = false;
+        if (spinner) {
+          spinner.classList.add('hidden');
+          spinner.classList.remove('flex');
+        }
+      }
+    }
+
+    function downloadCurrentSVG() {
+      const svgContent = minimalStudio.svgString || `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"></svg>`;
+      const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'robogenius_minimal_dobot_portrait.svg';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Downloaded Minimal SVG (robogenius_minimal_dobot_portrait.svg)!');
+    }
+
+    // Allow user to click & drag directly on the 2D Paper Preview canvas to command the 3D robot freehand!
+    function setup2DPaperFreehandDrawing() {
+      let isDrawingFreehand = false;
+      function getNormFromMouseEvent(e) {
+        const rect = paperPreviewCanvas.getBoundingClientRect();
+        const px = (e.clientX - rect.left) / rect.width;
+        const py = (e.clientY - rect.top) / rect.height;
+        return {
+          nx: THREE.MathUtils.clamp((px - 0.5) * 2.1, -0.9, 0.9),
+          ny: THREE.MathUtils.clamp((py - 0.5) * 2.1, -0.9, 0.9)
+        };
+      }
+
+      paperPreviewCanvas.addEventListener('pointerdown', (e) => {
+        isDrawingFreehand = true;
+        plotterState.isPlaying = false;
+        updatePlayPauseButtonUI();
+        const { nx, ny } = getNormFromMouseEvent(e);
+        const { rx, ry } = paperNormToRobotXY(nx, ny);
+        plotterState.lastPenPaperPos = null;
+        solveInverseKinematicsAndApply(rx, ry, 0.0);
+        drawInkOnPaperAtRobotXY(rx, ry, true);
+      });
+
+      paperPreviewCanvas.addEventListener('pointermove', (e) => {
+        if (!isDrawingFreehand) return;
+        const { nx, ny } = getNormFromMouseEvent(e);
+        const { rx, ry } = paperNormToRobotXY(nx, ny);
+        solveInverseKinematicsAndApply(rx, ry, 0.0);
+        drawInkOnPaperAtRobotXY(rx, ry, true);
+      });
+
+      window.addEventListener('pointerup', () => {
+        if (isDrawingFreehand) {
+          isDrawingFreehand = false;
+          plotterState.lastPenPaperPos = null;
+        }
+      });
+    }
+
+    /***************************************************************************
+     * 11. UI CONTROLS, CAMERA PRESETS, WAYPOINTS & GLB EXPORTER
+     ***************************************************************************/
+    function onCartesianSliderInput() {
+      plotterState.isPlaying = false;
+      updatePlayPauseButtonUI();
+      const tx = parseFloat(document.getElementById('slider-ik-x').value);
+      const ty = parseFloat(document.getElementById('slider-ik-y').value);
+      const tz = parseFloat(document.getElementById('slider-ik-z').value);
+      solveInverseKinematicsAndApply(tx, ty, tz);
+      drawInkOnPaperAtRobotXY(robotState.x, robotState.y, robotState.penDown);
+    }
+
+    function onJointSliderInput() {
+      plotterState.isPlaying = false;
+      updatePlayPauseButtonUI();
+      const j1 = parseFloat(document.getElementById('slider-j1').value);
+      const j2 = parseFloat(document.getElementById('slider-j2').value);
+      const j3 = parseFloat(document.getElementById('slider-j3').value);
+      const j4 = parseFloat(document.getElementById('slider-j4').value);
+      solveForwardKinematicsFromJoints(j1, j2, j3, j4);
+      drawInkOnPaperAtRobotXY(robotState.x, robotState.y, robotState.penDown);
+    }
+
+    function syncControlSlidersUI() {
+      document.getElementById('slider-ik-x').value = robotState.x;
+      document.getElementById('slider-ik-y').value = robotState.y;
+      document.getElementById('slider-ik-z').value = robotState.z;
+      document.getElementById('val-ik-x').textContent = `${robotState.x.toFixed(1)} mm`;
+      document.getElementById('val-ik-y').textContent = `${robotState.y.toFixed(1)} mm`;
+      document.getElementById('val-ik-z').textContent = `${robotState.z.toFixed(1)} mm`;
+
+      document.getElementById('slider-j1').value = robotState.j1;
+      document.getElementById('slider-j2').value = robotState.j2;
+      document.getElementById('slider-j3').value = robotState.j3;
+      document.getElementById('slider-j4').value = robotState.j4;
+      document.getElementById('val-j1').textContent = `${robotState.j1.toFixed(1)}°`;
+      document.getElementById('val-j2').textContent = `${robotState.j2.toFixed(1)}°`;
+      document.getElementById('val-j3').textContent = `${robotState.j3.toFixed(1)}°`;
+      document.getElementById('val-j4').textContent = `${robotState.j4.toFixed(1)}°`;
+
+      const penBadge = document.getElementById('telemetryPenBadge');
+      if (robotState.penDown) {
+        penBadge.textContent = 'PEN DOWN (DRAWING)';
+        penBadge.className = 'text-emerald-400 font-semibold';
+      } else {
+        penBadge.textContent = 'PEN UP (TRAVEL)';
+        penBadge.className = 'text-amber-400 font-semibold';
+      }
+    }
+
+    function setPenZState(down) {
+      plotterState.isPlaying = false;
+      updatePlayPauseButtonUI();
+      solveInverseKinematicsAndApply(robotState.x, robotState.y, down ? 0.0 : 15.0);
+    }
+
+    function homeRobotPose() {
+      plotterState.isPlaying = false;
+      updatePlayPauseButtonUI();
+      solveInverseKinematicsAndApply(210, 0, 18, 0);
+    }
+
+    function togglePlotSimulation() {
+      plotterState.isPlaying = !plotterState.isPlaying;
+      updatePlayPauseButtonUI();
+    }
+
+    function restartPlotSimulation() {
+      resetPaperCanvasBackground();
+      plotterState.queueIndex = 0;
+      plotterState.lastPenPaperPos = null;
+      plotterState.isPlaying = true;
+      updatePlayPauseButtonUI();
+    }
+
+    function clearPaperSheet() {
+      resetPaperCanvasBackground();
+      plotterState.lastPenPaperPos = null;
+    }
+
+    function setPlotSpeed(val) {
+      plotterState.speed = parseInt(val, 10) || 2;
+    }
+
+    function emergencyStopSimulation() {
+      plotterState.isPlaying = false;
+      plotterState.lastPenPaperPos = null;
+      solveInverseKinematicsAndApply(robotState.x, robotState.y, 22.0);
+      updatePlayPauseButtonUI();
+      const statusBadge = document.getElementById('telemetryStatusBadge');
+      statusBadge.textContent = 'E-STOP HALTED (SAFE Z)';
+      statusBadge.className = 'text-rose-400 font-bold';
+      showToast('Emergency Stop triggered: Pen retracted to safe Z = 22mm.');
+    }
+
+    function updatePlayPauseButtonUI() {
+      const icon = document.getElementById('iconPlayPause');
+      const statusBadge = document.getElementById('telemetryStatusBadge');
+      if (plotterState.isPlaying) {
+        icon.className = 'fa-solid fa-pause';
+        statusBadge.textContent = 'SIMULATING PLOT';
+        statusBadge.className = 'text-cyan-400 font-semibold animate-pulse';
+      } else {
+        icon.className = 'fa-solid fa-play';
+        statusBadge.textContent = 'MANUAL JOG / PAUSED';
+        statusBadge.className = 'text-amber-400 font-semibold';
+      }
+    }
+
+    function setVisualTheme(theme) {
+      robotState.visualTheme = theme;
+      const btnCAD = document.getElementById('btnModeCAD');
+      const btnStudio = document.getElementById('btnModeStudio');
+
+      if (theme === 'cad') {
+        btnCAD.className = 'px-2.5 py-1 rounded-md text-xs font-medium transition flex items-center gap-1.5 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40';
+        btnStudio.className = 'px-2.5 py-1 rounded-md text-xs font-medium transition flex items-center gap-1.5 text-slate-400 hover:text-white';
+        scene.background.setHex(0x090d15);
+        cadGridHelper.visible = true;
+        workDomeMesh.visible = robotState.overlays.dome;
+        cadEdgesList.forEach((l) => (l.visible = robotState.overlays.edges));
+      } else {
+        btnStudio.className = 'px-2.5 py-1 rounded-md text-xs font-medium transition flex items-center gap-1.5 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40';
+        btnCAD.className = 'px-2.5 py-1 rounded-md text-xs font-medium transition flex items-center gap-1.5 text-slate-400 hover:text-white';
+        scene.background.setHex(0x040811);
+        cadGridHelper.visible = false;
+        workDomeMesh.visible = false;
+        cadEdgesList.forEach((l) => (l.visible = false));
+      }
+    }
+
+    function toggleSceneOverlay(key) {
+      robotState.overlays[key] = !robotState.overlays[key];
+      const active = robotState.overlays[key];
+      const btn = document.getElementById(`toggleBtn-${key}`);
+      if (btn) {
+        btn.className = active
+          ? 'px-2.5 py-1 rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-medium transition flex items-center gap-1.5'
+          : 'px-2.5 py-1 rounded-md bg-rg-card text-slate-400 border border-rg-border font-medium transition flex items-center gap-1.5';
+      }
+
+      if (key === 'dome' && workDomeMesh) workDomeMesh.visible = active;
+      if (key === 'hud') document.getElementById('hudOverlayContainer').style.display = active ? 'block' : 'none';
+      if (key === 'edges') cadEdgesList.forEach((l) => (l.visible = active));
+      if (key === 'toolpath' && toolpathLineGroup) toolpathLineGroup.visible = active;
+    }
+
+    function setCameraPreset(preset) {
+      if (preset === 'studio') {
+        camera.position.set(2.85, 1.48, 2.85);
+        controls.target.set(1.05, 0.55, 0.0);
+      } else if (preset === 'cad') {
+        camera.position.set(3.05, 2.25, 3.20);
+        controls.target.set(0.95, 0.65, 0.0);
+      } else if (preset === 'top') {
+        camera.position.set(2.10, 3.65, 0.01);
+        controls.target.set(2.10, 0.0, 0.0);
+      } else if (preset === 'side') {
+        camera.position.set(1.05, 1.15, 3.85);
+        controls.target.set(1.05, 0.75, 0.0);
+      }
+      controls.update();
+    }
+
+    function renderWaypointList() {
+      const container = document.getElementById('waypointListContainer');
+      document.getElementById('waypointCountBadge').textContent = `${recordedWaypoints.length} pts`;
+      container.innerHTML = recordedWaypoints
+        .map(
+          (wp, idx) => `
+        <div onclick="jumpToWaypoint(${idx})" class="p-2 rounded-lg bg-rg-bg hover:bg-slate-800 border border-rg-border cursor-pointer flex items-center justify-between transition">
+          <div>
+            <div class="text-xs font-semibold text-slate-200">${idx + 1}. ${wp.name}</div>
+            <div class="text-[10px] font-mono text-cyan-400">X:${wp.x.toFixed(0)} Y:${wp.y.toFixed(0)} Z:${wp.z.toFixed(0)}mm</div>
+          </div>
+          <i class="fa-solid fa-location-crosshairs text-slate-500 hover:text-cyan-400 text-xs"></i>
+        </div>
+      `
+        )
+        .join('');
+    }
+
+    function recordCurrentWaypoint() {
+      recordedWaypoints.push({
+        name: `Waypoint #${recordedWaypoints.length + 1}`,
+        x: robotState.x,
+        y: robotState.y,
+        z: robotState.z,
+        j4: robotState.j4
+      });
+      renderWaypointList();
+    }
+
+    function jumpToWaypoint(idx) {
+      const wp = recordedWaypoints[idx];
+      if (!wp) return;
+      plotterState.isPlaying = false;
+      updatePlayPauseButtonUI();
+      solveInverseKinematicsAndApply(wp.x, wp.y, wp.z, wp.j4);
+    }
+
+    function clearWaypoints() {
+      recordedWaypoints = [];
+      renderWaypointList();
+    }
+
+    function playWaypoints() {
+      if (recordedWaypoints.length < 2) return;
+      const customQueue = [];
+      for (let i = 0; i < recordedWaypoints.length; i++) {
+        const a = recordedWaypoints[i];
+        const b = recordedWaypoints[(i + 1) % recordedWaypoints.length];
+        for (let s = 0; s <= 24; s++) {
+          const t = s / 24;
+          const zVal = THREE.MathUtils.lerp(a.z, b.z, t);
+          customQueue.push({
+            x: THREE.MathUtils.lerp(a.x, b.x, t),
+            y: THREE.MathUtils.lerp(a.y, b.y, t),
+            z: zVal,
+            penDown: zVal <= 1.2,
+            strokeIdx: i + 1
+          });
+        }
+      }
+      plotterState.flatQueue = customQueue;
+      plotterState.queueIndex = 0;
+      plotterState.isPlaying = true;
+      updatePlayPauseButtonUI();
+    }
+
+    function toggleUSBHandshakeStatus(approved) {
+      const statusBadge = document.getElementById('telemetryStatusBadge');
+      if (approved) {
+        statusBadge.textContent = 'USB/SDK GATE READY';
+        statusBadge.className = 'text-emerald-400 font-bold';
+      } else {
+        updatePlayPauseButtonUI();
+      }
+    }
+
+    function exportGLBModel() {
+      if (!robotRootGroup || typeof THREE.GLTFExporter === 'undefined') return;
+      const exporter = new THREE.GLTFExporter();
+      exporter.parse(
+        robotRootGroup,
+        function (result) {
+          const blob = new Blob([result], { type: 'application/octet-stream' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = 'dobot_magician_classic_digital_twin.glb';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          showToast('Exported dobot_magician_classic_digital_twin.glb!');
+        },
+        { binary: true }
+      );
+    }
+
+    function toggleExportModal(show) {
+      const modal = document.getElementById('exportModal');
+      if (show) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      } else {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function copyBlenderScript() {
+      const code = document.getElementById('blenderCodeBlock').innerText;
+      const ta = document.createElement('textarea');
+      ta.value = code;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+
+      const badge = document.getElementById('copyConfirmBadge');
+      badge.classList.remove('hidden');
+      setTimeout(() => badge.classList.add('hidden'), 2600);
+    }
+
+    // Fast Zhang-Suen Thinning Pass
+    function zhangSuenThinning(bin, w, h, maxIters = 8) {
+      const toClear = new Int32Array(w * h);
+      for (let iter = 0; iter < maxIters; iter++) {
+        let changed = 0;
+        for (let step = 0; step < 2; step++) {
+          let count = 0;
+          for (let y = 1; y < h - 1; y++) {
+            for (let x = 1; x < w - 1; x++) {
+              const idx = y * w + x;
+              if (!bin[idx]) continue;
+              const p2 = bin[(y - 1) * w + x];
+              const p3 = bin[(y - 1) * w + (x + 1)];
+              const p4 = bin[y * w + (x + 1)];
+              const p5 = bin[(y + 1) * w + (x + 1)];
+              const p6 = bin[(y + 1) * w + x];
+              const p7 = bin[(y + 1) * w + (x - 1)];
+              const p8 = bin[y * w + (x - 1)];
+              const p9 = bin[(y - 1) * w + (x - 1)];
+
+              const B = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+              if (B < 2 || B > 6) continue;
+
+              const A =
+                (p2 === 0 && p3 === 1 ? 1 : 0) +
+                (p3 === 0 && p4 === 1 ? 1 : 0) +
+                (p4 === 0 && p5 === 1 ? 1 : 0) +
+                (p5 === 0 && p6 === 1 ? 1 : 0) +
+                (p6 === 0 && p7 === 1 ? 1 : 0) +
+                (p7 === 0 && p8 === 1 ? 1 : 0) +
+                (p8 === 0 && p9 === 1 ? 1 : 0) +
+                (p9 === 0 && p2 === 1 ? 1 : 0);
+
+              if (A !== 1) continue;
+              if (step === 0) {
+                if (p2 * p4 * p6 === 0 && p4 * p6 * p8 === 0) {
+                  toClear[count++] = idx;
+                }
+              } else {
+                if (p2 * p4 * p8 === 0 && p2 * p6 * p8 === 0) {
+                  toClear[count++] = idx;
+                }
+              }
+            }
+          }
+          for (let i = 0; i < count; i++) bin[toClear[i]] = 0;
+          changed += count;
+        }
+        if (changed === 0) break;
+      }
+    }
+
+    // Connected 8-neighbor skeleton chain tracer
+    function traceSkeletonChains(bin, w, h, minPoints) {
+      const visited = new Uint8Array(w * h);
+      const chains = [];
+      const dirs = [
+        [1, 0], [1, 1], [0, 1], [-1, 1],
+        [-1, 0], [-1, -1], [0, -1], [1, -1]
+      ];
+
+      for (let y = 2; y < h - 2; y++) {
+        for (let x = 2; x < w - 2; x++) {
+          const idx = y * w + x;
+          if (bin[idx] && !visited[idx]) {
+            const chain = [];
+            let cx = x, cy = y;
+            while (true) {
+              visited[cy * w + cx] = 1;
+              chain.push({ x: cx, y: cy });
+              let found = false;
+              for (let d = 0; d < 8; d++) {
+                const nx = cx + dirs[d][0];
+                const ny = cy + dirs[d][1];
+                const nIdx = ny * w + nx;
+                if (bin[nIdx] && !visited[nIdx]) {
+                  cx = nx;
+                  cy = ny;
+                  found = true;
+                  break;
+                }
+              }
+              if (!found || chain.length >= 140) break;
+            }
+            if (chain.length >= minPoints) {
+              chains.push(chain);
+            }
+          }
+        }
+      }
+      return chains;
+    }
+
+    // Ramer-Douglas-Peucker (RDP) Polyline Simplification
+    function simplifyPathRDP(pts, epsilon) {
+      if (pts.length <= 2) return pts;
+      let dmax = 0;
+      let index = 0;
+      const end = pts.length - 1;
+      const x1 = pts[0].x, y1 = pts[0].y;
+      const x2 = pts[end].x, y2 = pts[end].y;
+      const dx = x2 - x1, dy = y2 - y1;
+      const lenSq = dx * dx + dy * dy;
+
+      for (let i = 1; i < end; i++) {
+        let d;
+        if (lenSq === 0) {
+          d = Math.hypot(pts[i].x - x1, pts[i].y - y1);
+        } else {
+          const t = Math.max(0, Math.min(1, ((pts[i].x - x1) * dx + (pts[i].y - y1) * dy) / lenSq));
+          d = Math.hypot(pts[i].x - (x1 + t * dx), pts[i].y - (y1 + t * dy));
+        }
+        if (d > dmax) {
+          index = i;
+          dmax = d;
+        }
+      }
+
+      if (dmax > epsilon) {
+        const rec1 = simplifyPathRDP(pts.slice(0, index + 1), epsilon);
+        const rec2 = simplifyPathRDP(pts.slice(index), epsilon);
+        return rec1.slice(0, rec1.length - 1).concat(rec2);
+      } else {
+        return [pts[0], pts[end]];
+      }
+    }
+
+    // Greedy Nearest-Neighbor Traveling Salesperson (TSP) Stroke Ordering (Reverses strokes if tail is closer!)
+    function orderStrokesNearestNeighbor(strokes) {
+      const used = new Uint8Array(strokes.length);
+      const ordered = [];
+      let curX = 128, curY = 128;
+
+      for (let step = 0; step < strokes.length; step++) {
+        let bestIdx = -1;
+        let bestReverse = false;
+        let bestDist = Infinity;
+
+        for (let i = 0; i < strokes.length; i++) {
+          if (used[i]) continue;
+          const s = strokes[i];
+          const head = s[0];
+          const tail = s[s.length - 1];
+          const dHead = Math.hypot(head.x - curX, head.y - curY);
+          const dTail = Math.hypot(tail.x - curX, tail.y - curY);
+
+          if (dHead < bestDist) {
+            bestDist = dHead;
+            bestIdx = i;
+            bestReverse = false;
+          }
+          if (dTail < bestDist) {
+            bestDist = dTail;
+            bestIdx = i;
+            bestReverse = true;
+          }
+        }
+
+        if (bestIdx === -1) break;
+        used[bestIdx] = 1;
+        const chosen = bestReverse ? strokes[bestIdx].slice().reverse() : strokes[bestIdx];
+        ordered.push(chosen);
+        const endPt = chosen[chosen.length - 1];
+        curX = endPt.x;
+        curY = endPt.y;
+      }
+      return ordered;
+    }
+
+    /***************************************************************************
+     * 11. 3D FLOATING HUD PROJECTION & MAIN ANIMATION LOOP
+     ***************************************************************************/
+    function projectWorldToHUD(worldVec, elementId, text) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      const v = worldVec.clone().project(camera);
+      if (v.z > 1) {
+        el.style.opacity = '0';
+        return;
+      }
+      const container = document.getElementById('threeCanvasHost');
+      const x = (v.x * 0.5 + 0.5) * container.clientWidth;
+      const y = (-(v.y * 0.5) + 0.5) * container.clientHeight;
+      el.style.left = `${x}px`;
+      el.style.top = `${y}px`;
+      el.style.opacity = '1';
+      el.textContent = text;
+    }
+
+    function update3DHUDLabels() {
+      if (!robotState.overlays.hud || !j1TurretGroup) return;
+
+      const pJ1 = new THREE.Vector3();
+      j1TurretGroup.getWorldPosition(pJ1);
+      pJ1.y += 0.15;
+      pJ1.z += 0.55;
+      projectWorldToHUD(pJ1, 'hud-J1', `J1: ${robotState.j1.toFixed(1)}°`);
+
+      const pJ2 = new THREE.Vector3();
+      j2RearArmGroup.getWorldPosition(pJ2);
+      pJ2.y += 0.45;
+      pJ2.x -= 0.25;
+      projectWorldToHUD(pJ2, 'hud-J2', `J2: ${robotState.j2.toFixed(1)}°`);
+
+      const pJ3 = new THREE.Vector3();
+      j3ForearmRoot.getWorldPosition(pJ3);
+      pJ3.y += 0.35;
+      projectWorldToHUD(pJ3, 'hud-J3', `J3: ${robotState.j3.toFixed(1)}°`);
+
+      const pJ4 = new THREE.Vector3();
+      penAssemblyGroup.getWorldPosition(pJ4);
+      pJ4.y += 0.48;
+      projectWorldToHUD(pJ4, 'hud-J4', `J4: ${robotState.j4.toFixed(0)}°`);
+
+      const pTCP = new THREE.Vector3();
+      penNibWorldMarker.getWorldPosition(pTCP);
+      pTCP.x += 0.25;
+      projectWorldToHUD(
+        pTCP,
+        'hud-TCP',
+        `TCP (${robotState.x.toFixed(0)}, ${robotState.y.toFixed(0)}, ${robotState.z.toFixed(0)}) mm`
+      );
+    }
+
+    function stepPlotterSimulation() {
+      if (!plotterState.isPlaying || plotterState.flatQueue.length === 0) return;
+
+      const stepsPerFrame = plotterState.speed;
+      for (let s = 0; s < stepsPerFrame; s++) {
+        if (plotterState.queueIndex >= plotterState.flatQueue.length) {
+          plotterState.isPlaying = false;
+          updatePlayPauseButtonUI();
+          document.getElementById('plotProgressLabel').textContent = 'Plot Complete ✓';
+          break;
+        }
+
+        const cmd = plotterState.flatQueue[plotterState.queueIndex];
+        solveInverseKinematicsAndApply(cmd.x, cmd.y, cmd.z);
+        drawInkOnPaperAtRobotXY(cmd.x, cmd.y, cmd.penDown);
+        plotterState.queueIndex++;
+      }
+
+      const total = plotterState.flatQueue.length;
+      const pct = total > 0 ? Math.min(100, (plotterState.queueIndex / total) * 100) : 0;
+      document.getElementById('plotProgressBar').style.width = `${pct.toFixed(1)}%`;
+      document.getElementById('plotStrokeCounter').textContent = `${plotterState.queueIndex} / ${total} pts`;
+      if (plotterState.isPlaying) {
+        document.getElementById('plotProgressLabel').textContent = `Plotting (${pct.toFixed(0)}%)...`;
+      }
+    }
+
+    function onWindowResize() {
+      const container = document.getElementById('threeCanvasHost');
+      if (!container || !renderer) return;
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    }
+
+    function animateLoop() {
+      requestAnimationFrame(animateLoop);
+      stepPlotterSimulation();
+      if (controls) controls.update();
+      update3DHUDLabels();
+      if (renderer && scene && camera) {
+        renderer.render(scene, camera);
+      }
+    }
+
+    window.onload = function () {
+      initThreeScene();
+      initMinimalPortraitStudio();
+    };
+  </script>
+</body>
+</html>

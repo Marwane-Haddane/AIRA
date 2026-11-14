@@ -1,0 +1,21 @@
+# Python environments and caches
+.venv/
+.artline-venv/
+.svg-gen-venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+
+# Downloaded inference weights (fetch with the setup scripts / local server)
+models/*.pkl
+models/*.tflite
+svg gen/models/*.onnx
+
+# Local config, temporary downloads, and generated output
+.env
+.env.*
+!.env.example
+*.part
+*.log
+output/
+results/

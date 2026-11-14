@@ -1,0 +1,7 @@
+# Python 3.11–3.13 recommended (see rembg's current package requirements).
+numpy
+Pillow
+opencv-python-headless
+onnxruntime
+scikit-image
+rembg[cpu]
