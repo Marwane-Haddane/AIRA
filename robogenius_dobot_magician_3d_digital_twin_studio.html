@@ -151,12 +151,13 @@
     #photoDockClose { position:sticky; top:0; z-index:5; display:flex; align-items:center; justify-content:space-between; padding:9px 12px; background:rgba(8,15,27,.98); border-bottom:1px solid rgba(30,45,71,.8); }
     #photoWorkflowCard { border:0 !important; background:transparent !important; padding:14px !important; }
     #photoWorkflowCard #sourceReview, #photoWorkflowCard #cutoutReviewPanel, #photoWorkflowCard #svgReviewPanel { background:rgba(2,8,18,.72); }
+    #photoWorkflowCard #sketchReviewPanel { background:rgba(2,8,18,.72); }
     #photoWorkflowCard #svgReviewPreview { max-height:220px; }
     #photoDock > #cameraViewCard { margin:12px 12px 0; }
     #photoDock > #paperPreviewCard { margin:12px 12px 12px; }
     #photoDock > #photoWorkflowCard { margin:12px 12px 0; padding:12px !important; }
 
-    /* Three-stage portrait pipeline cards */
+    /* Four-stage portrait pipeline cards */
     #portraitPipeline { align-items:stretch; }
     .pipeline-card { border:1px solid #1e2d47; background:#0a1220; border-radius:10px; padding:4px; transition:border-color .18s ease, background .18s ease, transform .18s ease, box-shadow .18s ease; }
     .pipeline-card:hover { border-color:rgba(34,211,238,.55); transform:translateY(-1px); }
@@ -172,7 +173,13 @@
     .portrait-style-btn.active { color:#67e8f9; border-color:rgba(34,211,238,.7); background:rgba(6,182,212,.1); }
     #pipelineCutoutSpinner { display:flex; }
     #pipelineCutoutSpinner.hidden { display:none !important; }
-    #pipelinePhotoImg.hidden, #pipelineCutoutCanvas.hidden, #pipelineSvgCanvas.hidden { display:none !important; }
+    #pipelinePhotoImg.hidden, #pipelineCutoutCanvas.hidden, #pipelineSketchCanvas.hidden, #pipelineSvgCanvas.hidden { display:none !important; }
+    #pipelineSketchSpinner { display:flex; }
+    #pipelineSketchSpinner.hidden { display:none !important; }
+    #sketchGenerationOverlay { display:flex; }
+    #sketchGenerationOverlay.hidden { display:none !important; }
+    .generation-progress-bar { width:36%; animation:generation-sweep 1.4s ease-in-out infinite; }
+    @keyframes generation-sweep { 0% { transform:translateX(-120%); } 100% { transform:translateX(320%); } }
     .checkerboard { background-color:#0b1320; background-image:linear-gradient(45deg,#1a2940 25%,transparent 25%),linear-gradient(-45deg,#1a2940 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#1a2940 75%),linear-gradient(-45deg,transparent 75%,#1a2940 75%); background-size:12px 12px; background-position:0 0,0 6px,6px -6px,-6px 0; }
 
     /* Camera angle preset buttons in the sidebar */
@@ -352,18 +359,17 @@
               <span id="vectorStatus" class="text-[10px] font-mono text-slate-400">1 · Add a photo</span>
             </div>
 
-            <!-- 3-stage pipeline preview: photo -> clean cutout -> final SVG -->
-            <div id="portraitPipeline" class="flex items-stretch gap-1">
+            <!-- Four clear stages: photo -> cutout -> AI sketch -> plotter SVG -->
+            <div id="portraitPipeline" class="grid grid-cols-4 items-stretch gap-1">
               <button type="button" id="pipelineStage-photo" data-pipeline-stage="photo" onclick="selectPipelineStage('photo')" aria-pressed="true" class="pipeline-card active flex-1 min-w-0 text-left" title="Your input photo">
                 <span class="pipeline-thumb">
                   <span id="pipelinePhotoEmpty" class="absolute inset-0 flex items-center justify-center text-slate-600"><i class="fa-regular fa-image text-lg"></i></span>
                   <img id="pipelinePhotoImg" class="hidden" alt="Your photo preview" />
                   <span class="pipeline-num">1</span>
                 </span>
-                <span class="pipeline-label block">Your Photo</span>
-                <span class="pipeline-sub block">Input image</span>
+                <span class="pipeline-label block">Photo</span>
+                <span class="pipeline-sub block">Input</span>
               </button>
-              <i class="fa-solid fa-chevron-right self-center text-[8px] text-cyan-500/70 shrink-0"></i>
               <button type="button" id="pipelineStage-cutout" data-pipeline-stage="cutout" onclick="selectPipelineStage('cutout')" aria-pressed="false" class="pipeline-card flex-1 min-w-0 text-left" title="Subject with the background removed">
                 <span class="pipeline-thumb checkerboard">
                   <span id="pipelineCutoutEmpty" class="absolute inset-0 flex items-center justify-center text-slate-600"><i class="fa-solid fa-scissors text-lg"></i></span>
@@ -371,22 +377,31 @@
                   <span id="pipelineCutoutSpinner" class="hidden absolute inset-0 items-center justify-center bg-slate-950/70"><i class="fa-solid fa-circle-notch fa-spin text-cyan-300"></i></span>
                   <span class="pipeline-num">2</span>
                 </span>
-                <span class="pipeline-label block">Clean Cutout</span>
-                <span class="pipeline-sub block">Background removal</span>
+                <span class="pipeline-label block">Cutout</span>
+                <span class="pipeline-sub block">Clean subject</span>
               </button>
-              <i class="fa-solid fa-chevron-right self-center text-[8px] text-cyan-500/70 shrink-0"></i>
+              <button type="button" id="pipelineStage-sketch" data-pipeline-stage="sketch" onclick="selectPipelineStage('sketch')" aria-pressed="false" class="pipeline-card flex-1 min-w-0 text-left" title="AI-generated portrait sketch">
+                <span class="pipeline-thumb bg-white">
+                  <span id="pipelineSketchEmpty" class="absolute inset-0 flex items-center justify-center text-slate-400"><i class="fa-solid fa-wand-magic-sparkles text-lg"></i></span>
+                  <canvas id="pipelineSketchCanvas" width="180" height="180" class="hidden"></canvas>
+                  <span id="pipelineSketchSpinner" class="hidden absolute inset-0 items-center justify-center bg-slate-950/70"><i class="fa-solid fa-circle-notch fa-spin text-cyan-300"></i></span>
+                  <span class="pipeline-num">3</span>
+                </span>
+                <span class="pipeline-label block">AI Sketch</span>
+                <span class="pipeline-sub block">Generated art</span>
+              </button>
               <button type="button" id="pipelineStage-svg" data-pipeline-stage="svg" onclick="selectPipelineStage('svg')" aria-pressed="false" class="pipeline-card flex-1 min-w-0 text-left" title="Simplified SVG line drawing">
                 <span class="pipeline-thumb bg-white">
                   <span id="pipelineSvgEmpty" class="absolute inset-0 flex items-center justify-center text-slate-400"><i class="fa-solid fa-bezier-curve text-lg"></i></span>
                   <canvas id="pipelineSvgCanvas" width="180" height="180" class="hidden"></canvas>
-                  <span class="pipeline-num">3</span>
+                  <span class="pipeline-num">4</span>
                 </span>
-                <span class="pipeline-label block">Final Result</span>
-                <span class="pipeline-sub block">Simple SVG style</span>
+                <span class="pipeline-label block">SVG</span>
+                <span class="pipeline-sub block">Plot paths</span>
               </button>
             </div>
 
-            <p id="pipelineHint" class="text-[10px] text-slate-400 leading-relaxed">Upload or snap a portrait. Background removal and the line-art SVG are generated automatically.</p>
+            <p id="pipelineHint" class="text-[10px] text-slate-400 leading-relaxed">Add a photo. Review its AI sketch before creating the plotter SVG.</p>
 
             <div class="grid grid-cols-2 gap-2">
               <button onclick="startCameraCapture()" class="py-2 px-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-xs text-cyan-300 font-medium transition"><i class="fa-solid fa-camera mr-1.5"></i>Use camera</button>
@@ -404,15 +419,11 @@
               <p class="text-[10px] text-slate-500">Camera access requires a secure page (HTTPS or localhost) and your permission.</p>
             </div>
 
-            <!-- Stage 1 detail: source photo framing and tracing controls -->
+            <!-- Stage 1 detail: source photo -->
             <div id="sourceReview" class="hidden space-y-2 rounded-lg border border-rg-border bg-rg-bg p-2">
               <div class="flex justify-between text-[10px] text-slate-400"><span id="sourceName">Source image</span><button onclick="clearPhotoSource()" class="text-rose-300 hover:text-rose-200">Remove</button></div>
               <img id="sourcePreview" alt="Selected photo preview" class="rounded-md" />
-              <div class="grid grid-cols-2 gap-2 text-[10px] text-slate-400">
-                <label>Edge sensitivity <span id="thresholdValue" class="text-cyan-300">145</span><input id="edgeThreshold" class="mt-1" type="range" min="35" max="220" value="145" oninput="updateThreshold(this.value)" /></label>
-                <label>Detail <span id="detailValue" class="text-cyan-300">90</span><input id="detailLimit" class="mt-1" type="range" min="20" max="120" value="90" oninput="updateDetail(this.value)" /></label>
-              </div>
-              <button onclick="processPortraitPipeline()" class="w-full py-1.5 rounded-md bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 text-xs font-semibold"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Re-run AI cleanup</button>
+              <button onclick="processPortraitPipeline()" class="w-full py-1.5 rounded-md bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 text-xs font-semibold"><i class="fa-solid fa-arrows-rotate mr-1"></i>Process photo again</button>
             </div>
 
             <!-- Stage 2 detail: background-removed subject -->
@@ -425,23 +436,44 @@
                 <canvas id="cutoutPreviewCanvas" width="360" height="360" class="w-full h-full block"></canvas>
                 <span id="cutoutEmptyLabel" class="absolute inset-0 flex items-center justify-center text-[11px] text-slate-500">No cutout yet</span>
               </div>
-              <div class="grid grid-cols-2 gap-2">
-                <button onclick="processPortraitPipeline()" class="py-1.5 rounded-md bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 text-xs font-semibold"><i class="fa-solid fa-scissors mr-1"></i>Re-run removal</button>
-                <button onclick="generateVectorPreview()" class="py-1.5 rounded-md bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 text-xs font-semibold"><i class="fa-solid fa-bezier-curve mr-1"></i>Trace SVG</button>
-              </div>
-              <div class="space-y-1.5">
-                <div class="text-[10px] text-slate-400">Drawing style</div>
-                <div class="grid grid-cols-2 gap-1.5">
-                  <button id="portraitStyleArtLine" type="button" onclick="selectPortraitStyle('artline')" class="portrait-style-btn active py-1.5 rounded-md border text-[10px] font-semibold">ArtLine</button>
-                  <button id="portraitStyleU2Net" type="button" onclick="selectPortraitStyle('u2net')" class="portrait-style-btn py-1.5 rounded-md border text-[10px] font-semibold">Portrait Sketch</button>
-                </div>
-              </div>
-              <p id="cutoutHelp" class="text-[10px] text-slate-500 leading-relaxed">The portrait model runs locally in your browser. If it cannot load, a soft head-and-shoulders mask is used instead.</p>
+              <button onclick="processPortraitPipeline()" class="w-full py-1.5 rounded-md bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 text-xs font-semibold"><i class="fa-solid fa-scissors mr-1"></i>Re-run background removal</button>
+              <p class="text-[10px] text-slate-500 leading-relaxed">The cleaned subject is sent to the next step to generate the portrait sketch.</p>
             </div>
 
-            <!-- Stage 3 detail: final plot-ready SVG -->
+            <!-- Stage 3 detail: inspect generated AI line-art image before vectorizing -->
+            <div id="sketchReviewPanel" class="hidden space-y-2 rounded-lg border border-cyan-500/25 bg-rg-bg p-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-white">3 · AI portrait sketch</span>
+                <span id="sketchStatus" class="text-[10px] font-mono text-cyan-300">Waiting for cutout</span>
+              </div>
+              <div class="relative w-full aspect-square rounded-md overflow-hidden border border-slate-700 bg-white">
+                <canvas id="sketchPreviewCanvas" width="360" height="360" class="hidden w-full h-full block"></canvas>
+                <div id="sketchEmptyLabel" class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-[11px] text-slate-400"><i class="fa-solid fa-wand-magic-sparkles text-2xl"></i><span>Your generated sketch will appear here</span></div>
+                <div id="sketchGenerationOverlay" role="status" aria-live="polite" class="hidden absolute inset-0 flex-col items-center justify-center gap-3 bg-white/95 text-slate-700">
+                  <i class="fa-solid fa-circle-notch fa-spin text-3xl text-cyan-600"></i>
+                  <span class="text-xs font-semibold">Generating your portrait sketch…</span>
+                  <span class="text-[10px] text-slate-500">This can take a few seconds</span>
+                  <div class="w-2/3 h-1.5 rounded-full bg-slate-200 overflow-hidden"><span class="generation-progress-bar block h-full rounded-full bg-cyan-500"></span></div>
+                </div>
+              </div>
+              <div class="space-y-1.5">
+                <div class="text-[10px] text-slate-400">Sketch model</div>
+                <div class="grid grid-cols-2 gap-1.5">
+                  <button id="portraitStyleArtLine" type="button" onclick="selectPortraitStyle('artline')" class="portrait-style-btn py-1.5 rounded-md border text-[10px] font-semibold">ArtLine</button>
+                  <button id="portraitStyleU2Net" type="button" onclick="selectPortraitStyle('u2net')" class="portrait-style-btn active py-1.5 rounded-md border text-[10px] font-semibold">Portrait Sketch</button>
+                </div>
+              </div>
+              <p id="sketchHelp" class="text-[10px] text-slate-500 leading-relaxed">Review the generated image first. The SVG step converts this sketch into robot paths.</p>
+              <div class="grid grid-cols-2 gap-2 text-[10px] text-slate-400">
+                <label>Edge sensitivity <span id="thresholdValue" class="text-cyan-300">145</span><input id="edgeThreshold" class="mt-1" type="range" min="35" max="220" value="145" oninput="updateThreshold(this.value)" /></label>
+                <label>Detail <span id="detailValue" class="text-cyan-300">90</span><input id="detailLimit" class="mt-1" type="range" min="20" max="120" value="90" oninput="updateDetail(this.value)" /></label>
+              </div>
+              <button id="traceSketchButton" type="button" onclick="generateVectorPreview()" disabled class="w-full py-2 rounded-md bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 disabled:opacity-40 text-xs font-semibold"><i class="fa-solid fa-bezier-curve mr-1"></i>Trace sketch to SVG</button>
+            </div>
+
+            <!-- Stage 4 detail: final plot-ready SVG -->
             <div id="svgReviewPanel" class="hidden space-y-2 rounded-lg border border-amber-500/30 bg-rg-bg p-2">
-              <div class="flex items-center justify-between"><span class="text-xs font-semibold text-white">3 · Final SVG</span><span id="svgStats" class="text-[10px] font-mono text-cyan-300">—</span></div>
+              <div class="flex items-center justify-between"><span class="text-xs font-semibold text-white">4 · Plotter SVG</span><span id="svgStats" class="text-[10px] font-mono text-cyan-300">—</span></div>
               <svg id="svgReviewPreview" viewBox="0 0 512 512" role="img" aria-label="Generated vector drawing preview" xmlns="http://www.w3.org/2000/svg"></svg>
               <div id="validationMessage" class="text-[10px] text-slate-400 leading-relaxed">Inspect the strokes, then validate this SVG to add it to the plotter.</div>
               <div class="grid grid-cols-2 gap-2">
@@ -1031,10 +1063,11 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
     let selectedPhotoCutout = null; // { canvas, mask, width, height, fallback }
     let selectedPhotoArtLineCanvas = null;
     let selectedPhotoStyleCanvases = { artline: null, u2net: null };
-    let selectedPhotoStyle = 'artline';
+    let selectedPhotoStyle = 'u2net';
     let portraitSegmenterPromise = null;
     let portraitPipelineToken = 0;
     let activePipelineStage = 'photo';
+    let portraitSketchGenerating = false;
     const PORTRAIT_WORK_SIZE = 512;
     const PORTRAIT_NORM_HALF = 0.82;
 
@@ -2514,7 +2547,11 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
     }
 
     function selectPipelineStage(stage) {
-      if (!['photo', 'cutout', 'svg'].includes(stage)) stage = 'photo';
+      if (!['photo', 'cutout', 'sketch', 'svg'].includes(stage)) stage = 'photo';
+      if (stage === 'cutout' && !selectedPhotoImage) stage = 'photo';
+      if (stage === 'sketch' && !selectedPhotoCutout) stage = selectedPhotoImage ? 'cutout' : 'photo';
+      const hasSvg = !!(plotterState.pendingPhotoStrokes && plotterState.pendingPhotoStrokes.length);
+      if (stage === 'svg' && !hasSvg) stage = selectedPhotoCutout ? 'sketch' : (selectedPhotoImage ? 'cutout' : 'photo');
       activePipelineStage = stage;
       document.querySelectorAll('[data-pipeline-stage]').forEach((card) => {
         const active = card.dataset.pipelineStage === stage;
@@ -2522,11 +2559,12 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
         card.setAttribute('aria-pressed', active ? 'true' : 'false');
       });
       const hasPhoto = !!selectedPhotoImage;
-      const hasSvg = !!(plotterState.pendingPhotoStrokes && plotterState.pendingPhotoStrokes.length);
       document.getElementById('sourceReview').classList.toggle('hidden', stage !== 'photo' || !hasPhoto);
       document.getElementById('cutoutReviewPanel').classList.toggle('hidden', stage !== 'cutout' || !hasPhoto);
+      document.getElementById('sketchReviewPanel').classList.toggle('hidden', stage !== 'sketch' || !hasPhoto);
       document.getElementById('svgReviewPanel').classList.toggle('hidden', stage !== 'svg' || !hasSvg);
       if (stage === 'cutout' && selectedPhotoCutout) paintCutoutPreview();
+      if (stage === 'sketch' && selectedPhotoArtLineCanvas) paintPortraitSketchPreview();
       if (stage === 'svg' && hasSvg) renderGeneratedSvg(plotterState.pendingPhotoStrokes);
       updatePipelineHint();
     }
@@ -2535,16 +2573,17 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
       const hint = document.getElementById('pipelineHint');
       if (!hint) return;
       const hasPhoto = !!selectedPhotoImage;
-      const hasCutout = !!selectedPhotoCutout;
       const hasSvg = !!(plotterState.pendingPhotoStrokes && plotterState.pendingPhotoStrokes.length);
       if (!hasPhoto) {
-        hint.textContent = 'Upload or snap a portrait. Background removal and the line-art SVG are generated automatically.';
+        hint.textContent = 'Add a photo. Review its AI sketch before creating the plotter SVG.';
       } else if (activePipelineStage === 'photo') {
-        hint.textContent = 'Photo ready. Background removal runs automatically; use the sliders to refine the final line art.';
+        hint.textContent = 'Photo ready. Background removal and the AI sketch start automatically.';
       } else if (activePipelineStage === 'cutout') {
-        hint.textContent = hasCutout ? 'Clean cutout ready. Re-run removal or trace the final SVG.' : 'Removing the background from your photo…';
+        hint.textContent = selectedPhotoCutout ? 'Background removed. Preparing the AI portrait sketch…' : 'Removing the background from your photo…';
+      } else if (activePipelineStage === 'sketch') {
+        hint.textContent = portraitSketchGenerating ? 'Generating the AI portrait image…' : selectedPhotoArtLineCanvas ? 'Review the generated portrait, then trace it to SVG.' : 'Choose a sketch model or use the built-in tracer.';
       } else {
-        hint.textContent = hasSvg ? 'Final SVG ready. Download it or validate it for the Dobot plotter.' : 'Tracing the simplified line-art SVG…';
+        hint.textContent = hasSvg ? 'Plotter SVG ready. Download it or validate it for the Dobot.' : 'Tracing the reviewed portrait sketch into SVG paths…';
       }
     }
 
@@ -2569,11 +2608,22 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
           document.getElementById('pipelinePhotoEmpty').classList.add('hidden');
           document.getElementById('pipelineCutoutCanvas').classList.add('hidden');
           document.getElementById('pipelineCutoutEmpty').classList.remove('hidden');
+          document.getElementById('pipelineSketchCanvas').classList.add('hidden');
+          document.getElementById('pipelineSketchEmpty').classList.remove('hidden');
+          document.getElementById('pipelineSketchSpinner').classList.add('hidden');
           document.getElementById('pipelineSvgCanvas').classList.add('hidden');
           document.getElementById('pipelineSvgEmpty').classList.remove('hidden');
+          document.getElementById('sketchPreviewCanvas').classList.add('hidden');
+          document.getElementById('sketchEmptyLabel').classList.remove('hidden');
+          document.getElementById('sketchEmptyLabel').innerHTML = '<i class="fa-solid fa-wand-magic-sparkles text-2xl"></i><span>Your generated sketch will appear here</span>';
+          document.getElementById('sketchGenerationOverlay').classList.add('hidden');
           document.getElementById('cutoutEmptyLabel').classList.remove('hidden');
           document.getElementById('cutoutStatus').textContent = 'Queued';
-          document.getElementById('cutoutHelp').textContent = 'The portrait model runs locally in your browser. If it cannot load, a soft head-and-shoulders mask is used instead.';
+          document.getElementById('sketchStatus').textContent = 'Waiting for cutout';
+          document.getElementById('traceSketchButton').disabled = true;
+          document.getElementById('downloadSvgButton').disabled = true;
+          document.getElementById('validateSvgButton').disabled = true;
+          document.getElementById('svgStats').textContent = '—';
           document.getElementById('vectorStatus').textContent = '2 · Removing background…';
           document.getElementById('validatedBanner').classList.add('hidden');
           selectPipelineStage('photo');
@@ -2589,12 +2639,30 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
 
     function updateThreshold(value) {
       document.getElementById('thresholdValue').textContent = value;
-      if (selectedPhotoCutout) generateVectorPreview();
+      invalidateVectorPreview();
     }
 
     function updateDetail(value) {
       document.getElementById('detailValue').textContent = value;
-      if (selectedPhotoCutout) generateVectorPreview();
+      invalidateVectorPreview();
+    }
+
+    function invalidateVectorPreview() {
+      if (!selectedPhotoCutout) return;
+      plotterState.pendingPhotoStrokes = null;
+      plotterState.photoSvgValidated = false;
+      document.getElementById('downloadSvgButton').disabled = true;
+      document.getElementById('validateSvgButton').disabled = true;
+      document.getElementById('validatedBanner').classList.add('hidden');
+      document.getElementById('pipelineSvgCanvas').classList.add('hidden');
+      document.getElementById('pipelineSvgEmpty').classList.remove('hidden');
+      document.getElementById('traceSketchButton').disabled = portraitSketchGenerating || !selectedPhotoCutout;
+      document.getElementById('traceSketchButton').innerHTML = selectedPhotoArtLineCanvas
+        ? '<i class="fa-solid fa-bezier-curve mr-1"></i>Trace sketch to SVG'
+        : '<i class="fa-solid fa-bezier-curve mr-1"></i>Trace with built-in tool';
+      if (activePipelineStage === 'svg') selectPipelineStage('sketch');
+      refreshPhysicalDrawButton();
+      updatePipelineHint();
     }
 
     function clearPhotoSource() {
@@ -2612,12 +2680,25 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
       document.getElementById('pipelinePhotoEmpty').classList.remove('hidden');
       document.getElementById('pipelineCutoutCanvas').classList.add('hidden');
       document.getElementById('pipelineCutoutEmpty').classList.remove('hidden');
+      document.getElementById('pipelineSketchCanvas').classList.add('hidden');
+      document.getElementById('pipelineSketchEmpty').classList.remove('hidden');
+      document.getElementById('pipelineSketchSpinner').classList.add('hidden');
       document.getElementById('pipelineSvgCanvas').classList.add('hidden');
       document.getElementById('pipelineSvgEmpty').classList.remove('hidden');
+      document.getElementById('sketchPreviewCanvas').getContext('2d').clearRect(0, 0, 360, 360);
+      document.getElementById('sketchPreviewCanvas').classList.add('hidden');
+      document.getElementById('sketchEmptyLabel').classList.remove('hidden');
+      document.getElementById('sketchEmptyLabel').innerHTML = '<i class="fa-solid fa-wand-magic-sparkles text-2xl"></i><span>Your generated sketch will appear here</span>';
+      document.getElementById('sketchGenerationOverlay').classList.add('hidden');
       document.getElementById('cutoutPreviewCanvas').getContext('2d').clearRect(0, 0, 360, 360);
       document.getElementById('cutoutEmptyLabel').classList.remove('hidden');
       document.getElementById('cutoutStatus').textContent = 'Waiting for photo';
-      document.getElementById('cutoutHelp').textContent = 'The portrait model runs locally in your browser. If it cannot load, a soft head-and-shoulders mask is used instead.';
+      document.getElementById('sketchStatus').textContent = 'Waiting for cutout';
+      document.getElementById('sketchHelp').textContent = 'Review the generated image first. The SVG step converts this sketch into robot paths.';
+      document.getElementById('traceSketchButton').disabled = true;
+      document.getElementById('downloadSvgButton').disabled = true;
+      document.getElementById('validateSvgButton').disabled = true;
+      portraitSketchGenerating = false;
       document.getElementById('sourcePreview').removeAttribute('src');
       document.getElementById('validatedBanner').classList.add('hidden');
       document.getElementById('svgStats').textContent = '—';
@@ -2821,15 +2902,56 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
 
     let portraitQueue = Promise.resolve();
 
+    function withTimeout(promise, ms, message) {
+      let timer;
+      return Promise.race([
+        promise,
+        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(message)), ms); })
+      ]).finally(() => clearTimeout(timer));
+    }
+
+    function setPortraitSketchLoading(loading) {
+      portraitSketchGenerating = loading;
+      document.getElementById('sketchReviewPanel').setAttribute('aria-busy', loading ? 'true' : 'false');
+      document.getElementById('sketchGenerationOverlay').classList.toggle('hidden', !loading);
+      document.getElementById('pipelineSketchSpinner').classList.toggle('hidden', !loading);
+      document.getElementById('traceSketchButton').disabled = loading || !selectedPhotoCutout;
+      if (loading) {
+        document.getElementById('sketchStatus').textContent = 'Generating…';
+        document.getElementById('sketchEmptyLabel').classList.add('hidden');
+      }
+      updatePipelineHint();
+    }
+
     function processPortraitPipeline() {
       if (!selectedPhotoImage) return Promise.resolve();
       const token = ++portraitPipelineToken;
+      selectedPhotoCutout = null;
+      selectedPhotoArtLineCanvas = null;
+      selectedPhotoStyleCanvases = { artline: null, u2net: null };
+      plotterState.pendingPhotoStrokes = null;
+      plotterState.photoSvgValidated = false;
+      document.getElementById('traceSketchButton').disabled = true;
+      document.getElementById('pipelineSketchCanvas').classList.add('hidden');
+      document.getElementById('pipelineSketchEmpty').classList.remove('hidden');
+      document.getElementById('pipelineSvgCanvas').classList.add('hidden');
+      document.getElementById('pipelineSvgEmpty').classList.remove('hidden');
+      document.getElementById('sketchPreviewCanvas').classList.add('hidden');
+      document.getElementById('sketchEmptyLabel').classList.remove('hidden');
+      document.getElementById('sketchEmptyLabel').innerHTML = '<i class="fa-solid fa-wand-magic-sparkles text-2xl"></i><span>Your generated sketch will appear here</span>';
+      document.getElementById('sketchGenerationOverlay').classList.add('hidden');
+      portraitSketchGenerating = false;
       document.getElementById('pipelineCutoutSpinner').classList.remove('hidden');
       document.getElementById('pipelineCutoutEmpty').classList.add('hidden');
       document.getElementById('pipelineCutoutCanvas').classList.add('hidden');
       document.getElementById('cutoutStatus').textContent = 'Removing background…';
-      document.getElementById('cutoutHelp').textContent = 'Running local portrait segmentation…';
+      document.getElementById('sketchStatus').textContent = 'Waiting for cutout';
+      document.getElementById('svgStats').textContent = '—';
+      document.getElementById('downloadSvgButton').disabled = true;
+      document.getElementById('validateSvgButton').disabled = true;
       document.getElementById('vectorStatus').textContent = '2 · Removing background…';
+      selectPipelineStage('cutout');
+      refreshPhysicalDrawButton();
       updatePipelineHint();
       portraitQueue = portraitQueue.catch(() => {}).then(() => runPortraitPipeline(token));
       return portraitQueue;
@@ -2840,7 +2962,11 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
       try {
         let cutout;
         try {
-          cutout = await extractPortraitCutout(selectedPhotoImage);
+          cutout = await withTimeout(
+            extractPortraitCutout(selectedPhotoImage),
+            20000,
+            'Background removal took too long. Using a quick subject mask instead.'
+          );
         } catch (error) {
           console.warn('Portrait segmentation unavailable; using the soft fallback mask.', error);
           cutout = buildFallbackCutout(selectedPhotoImage);
@@ -2854,26 +2980,45 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
         document.getElementById('pipelineCutoutEmpty').classList.add('hidden');
         document.getElementById('pipelineCutoutCanvas').classList.remove('hidden');
         document.getElementById('cutoutStatus').textContent = cutout.fallback ? 'Soft mask' : 'Background removed';
-        document.getElementById('cutoutHelp').textContent = cutout.fallback
-          ? 'The AI model could not load, so a soft head-and-shoulders mask was used. Re-run removal to try the model again.'
-          : 'Background removed. Preparing portrait line art…';
         paintCutoutPreview();
         paintCutoutThumb();
-        await preparePortraitStyle(cutout.canvas, token);
+        selectPipelineStage('sketch');
+        setPortraitSketchLoading(true);
+        document.getElementById('vectorStatus').textContent = '3 · Generating AI sketch…';
+        const modelReady = await preparePortraitStyle(cutout.canvas, token);
         if (token !== portraitPipelineToken) return;
-        document.getElementById('vectorStatus').textContent = '3 · Tracing SVG…';
+        setPortraitSketchLoading(false);
+        if (modelReady) {
+          paintPortraitSketchPreview();
+          document.getElementById('sketchStatus').textContent = `${selectedPhotoStyle === 'u2net' ? 'Portrait Sketch' : 'ArtLine'} ready`;
+          document.getElementById('sketchHelp').textContent = 'Review this generated image, then trace it into SVG paths.';
+          document.getElementById('vectorStatus').textContent = '3 · Review AI sketch';
+        } else {
+          document.getElementById('sketchPreviewCanvas').classList.add('hidden');
+          document.getElementById('sketchEmptyLabel').classList.remove('hidden');
+          document.getElementById('sketchEmptyLabel').innerHTML = '<i class="fa-solid fa-circle-exclamation text-2xl"></i><span>AI sketch unavailable</span>';
+          document.getElementById('sketchStatus').textContent = 'Model unavailable';
+          document.getElementById('sketchHelp').textContent = 'You can still continue with the built-in tracer, or install the selected portrait model.';
+          document.getElementById('vectorStatus').textContent = '3 · Ready to trace';
+        }
+        document.getElementById('traceSketchButton').disabled = false;
+        document.getElementById('traceSketchButton').innerHTML = modelReady
+          ? '<i class="fa-solid fa-bezier-curve mr-1"></i>Trace sketch to SVG'
+          : '<i class="fa-solid fa-bezier-curve mr-1"></i>Trace with built-in tool';
         updatePipelineHint();
-        generateVectorPreview();
       } catch (error) {
         console.error('Portrait pipeline failed:', error);
         if (token === portraitPipelineToken) {
+          setPortraitSketchLoading(false);
           document.getElementById('cutoutStatus').textContent = 'Cutout failed';
-          document.getElementById('vectorStatus').textContent = '3 · Adjust settings';
-          document.getElementById('cutoutHelp').textContent = 'Could not process this photo. Try another image or use the Trace SVG button to skip background removal.';
+          document.getElementById('sketchStatus').textContent = 'Generation failed';
+          document.getElementById('sketchHelp').textContent = error.message || 'Could not prepare this photo. Try another image.';
+          document.getElementById('vectorStatus').textContent = '2 · Try another photo';
         }
       } finally {
         if (token === portraitPipelineToken) {
           document.getElementById('pipelineCutoutSpinner').classList.add('hidden');
+          setPortraitSketchLoading(false);
         }
       }
     }
@@ -2889,29 +3034,35 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
     }
 
     async function requestPortraitModel(cutoutCanvas, modelKey) {
-      const response = await fetch(`${robotServiceBase}/api/${modelKey}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: cutoutCanvas.toDataURL('image/png') })
-      });
-      const payload = await response.json();
-      if (!response.ok || !payload.image) throw new Error(payload.error || 'The portrait model could not process this photo.');
-      const image = new Image();
-      await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; image.src = payload.image; });
-      const canvas = document.createElement('canvas');
-      canvas.width = cutoutCanvas.width;
-      canvas.height = cutoutCanvas.height;
-      canvas.getContext('2d', { willReadFrequently: true }).drawImage(image, 0, 0, canvas.width, canvas.height);
-      return canvas;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 185000);
+      try {
+        const response = await fetch(`${robotServiceBase}/api/${modelKey}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: cutoutCanvas.toDataURL('image/png') }),
+          signal: controller.signal
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.image) throw new Error(payload.error || 'The portrait model could not process this photo.');
+        const image = new Image();
+        await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; image.src = payload.image; });
+        const canvas = document.createElement('canvas');
+        canvas.width = cutoutCanvas.width;
+        canvas.height = cutoutCanvas.height;
+        canvas.getContext('2d', { willReadFrequently: true }).drawImage(image, 0, 0, canvas.width, canvas.height);
+        return canvas;
+      } finally {
+        clearTimeout(timeout);
+      }
     }
 
     async function preparePortraitStyle(cutoutCanvas, token) {
       const style = selectedPhotoStyle;
       const label = style === 'u2net' ? 'Portrait Sketch' : 'ArtLine';
-      document.getElementById('cutoutStatus').textContent = `Preparing ${label}…`;
+      document.getElementById('sketchStatus').textContent = `Generating ${label}…`;
       if (selectedPhotoStyleCanvases[style]) {
         selectedPhotoArtLineCanvas = selectedPhotoStyleCanvases[style];
-        document.getElementById('cutoutStatus').textContent = `${label} ready`;
-        document.getElementById('cutoutHelp').textContent = `${label} result ready. Review the SVG before validating it.`;
+        document.getElementById('sketchStatus').textContent = `${label} ready`;
         return true;
       }
       try {
@@ -2921,15 +3072,14 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
         if (token !== portraitPipelineToken) return false;
         selectedPhotoStyleCanvases[style] = canvas;
         selectedPhotoArtLineCanvas = canvas;
-        document.getElementById('cutoutStatus').textContent = `${label} ready`;
-        document.getElementById('cutoutHelp').textContent = `${label} result ready. Review the SVG before validating it.`;
+        document.getElementById('sketchStatus').textContent = `${label} ready`;
         return true;
       } catch (error) {
         console.info(`${label} is unavailable; using the built-in portrait tracer.`, error);
         if (token === portraitPipelineToken) {
           selectedPhotoArtLineCanvas = null;
-          document.getElementById('cutoutStatus').textContent = 'Built-in line art';
-          document.getElementById('cutoutHelp').textContent = error.message || `${label} could not run. The built-in portrait tracer remains available.`;
+          document.getElementById('sketchStatus').textContent = `${label} unavailable`;
+          document.getElementById('sketchHelp').textContent = error.message || `${label} could not run. The built-in portrait tracer remains available.`;
         }
         return false;
       }
@@ -2943,18 +3093,32 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
       if (!selectedPhotoCutout) return;
       const token = ++portraitPipelineToken;
       const label = style === 'u2net' ? 'Portrait Sketch' : 'ArtLine';
-      document.getElementById('pipelineCutoutSpinner').classList.remove('hidden');
-      document.getElementById('cutoutStatus').textContent = `Preparing ${label}…`;
-      document.getElementById('cutoutHelp').textContent = 'Generating a local preview. Your photo stays on this computer.';
-      plotterState.photoSvgValidated = false;
-      refreshPhysicalDrawButton();
+      selectedPhotoArtLineCanvas = null;
+      invalidateVectorPreview();
+      setPortraitSketchLoading(true);
+      document.getElementById('vectorStatus').textContent = `3 · Generating ${label}…`;
       portraitQueue = portraitQueue.catch(() => {}).then(async () => {
         const ready = await preparePortraitStyle(selectedPhotoCutout.canvas, token);
         if (token !== portraitPipelineToken) return;
-        document.getElementById('pipelineCutoutSpinner').classList.add('hidden');
-        document.getElementById('vectorStatus').textContent = '3 · Tracing SVG…';
-        generateVectorPreview();
-        if (!ready) document.getElementById('cutoutStatus').textContent = `${label} unavailable`;
+        setPortraitSketchLoading(false);
+        if (ready) {
+          paintPortraitSketchPreview();
+          document.getElementById('sketchStatus').textContent = `${label} ready`;
+          document.getElementById('sketchHelp').textContent = 'Review this generated image, then trace it into SVG paths.';
+          document.getElementById('vectorStatus').textContent = '3 · Review AI sketch';
+        } else {
+          document.getElementById('sketchPreviewCanvas').classList.add('hidden');
+          document.getElementById('sketchEmptyLabel').classList.remove('hidden');
+          document.getElementById('sketchEmptyLabel').innerHTML = '<i class="fa-solid fa-circle-exclamation text-2xl"></i><span>AI sketch unavailable</span>';
+          document.getElementById('sketchStatus').textContent = `${label} unavailable`;
+          document.getElementById('sketchHelp').textContent = 'You can continue with the built-in tracer or install the selected portrait model.';
+          document.getElementById('vectorStatus').textContent = '3 · Ready to trace';
+        }
+        document.getElementById('traceSketchButton').disabled = false;
+        document.getElementById('traceSketchButton').innerHTML = ready
+          ? '<i class="fa-solid fa-bezier-curve mr-1"></i>Trace sketch to SVG'
+          : '<i class="fa-solid fa-bezier-curve mr-1"></i>Trace with built-in tool';
+        updatePipelineHint();
       });
       return portraitQueue;
     }
@@ -2980,6 +3144,37 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
       document.getElementById('cutoutEmptyLabel').classList.toggle('hidden', !!selectedPhotoCutout);
       if (!selectedPhotoCutout) return;
       drawContain(ctx, selectedPhotoCutout.canvas, canvas.width, canvas.height, 6);
+    }
+
+    function paintPortraitSketchThumb() {
+      const canvas = document.getElementById('pipelineSketchCanvas');
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      if (!selectedPhotoArtLineCanvas) {
+        canvas.classList.add('hidden');
+        document.getElementById('pipelineSketchEmpty').classList.remove('hidden');
+        return;
+      }
+      drawContain(ctx, selectedPhotoArtLineCanvas, canvas.width, canvas.height, 4);
+      canvas.classList.remove('hidden');
+      document.getElementById('pipelineSketchEmpty').classList.add('hidden');
+    }
+
+    function paintPortraitSketchPreview() {
+      const canvas = document.getElementById('sketchPreviewCanvas');
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      if (!selectedPhotoArtLineCanvas) {
+        canvas.classList.add('hidden');
+        document.getElementById('sketchEmptyLabel').classList.remove('hidden');
+        return;
+      }
+      drawContain(ctx, selectedPhotoArtLineCanvas, canvas.width, canvas.height, 12);
+      canvas.classList.remove('hidden');
+      document.getElementById('sketchEmptyLabel').classList.add('hidden');
+      paintPortraitSketchThumb();
     }
 
     function paintSvgThumb(strokes) {
@@ -3008,8 +3203,14 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
       document.getElementById('pipelineSvgEmpty').classList.add('hidden');
     }
 
-    function generateVectorPreview() {
-      if (!selectedPhotoImage) return;
+    async function generateVectorPreview() {
+      if (!selectedPhotoImage || !selectedPhotoCutout) return;
+      const button = document.getElementById('traceSketchButton');
+      button.disabled = true;
+      button.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-1"></i>Tracing SVG…';
+      document.getElementById('vectorStatus').textContent = '4 · Tracing SVG…';
+      updatePipelineHint();
+      await new Promise((resolve) => requestAnimationFrame(resolve));
       const tracedStrokes = buildPortraitStrokes();
       plotterState.pendingPhotoStrokes = tracedStrokes;
       plotterState.photoSvgValidated = false;
@@ -3017,10 +3218,10 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
       document.getElementById('validatedBanner').classList.add('hidden');
       document.getElementById('downloadSvgButton').disabled = tracedStrokes.length === 0;
       document.getElementById('validateSvgButton').disabled = tracedStrokes.length === 0;
-      document.getElementById('vectorStatus').textContent = tracedStrokes.length ? '3 · Review SVG' : '3 · Adjust settings';
+      document.getElementById('vectorStatus').textContent = tracedStrokes.length ? '4 · Review SVG' : '4 · No paths found';
       document.getElementById('validationMessage').textContent = tracedStrokes.length
-        ? 'Inspect the strokes. Adjust sensitivity or detail and re-run the AI cleanup if needed. Validation maps the path onto the calibrated paper preview.'
-        : 'No usable strokes found. Try another photo, increase edge sensitivity, or raise the detail slider.';
+        ? 'Inspect the vector paths. Adjust sensitivity or detail in the AI Sketch step and trace again if needed. Validation maps them onto the calibrated paper preview.'
+        : 'No usable paths found. Return to AI Sketch, adjust sensitivity or detail, then trace again.';
       document.getElementById('svgStats').textContent = `${tracedStrokes.length} paths · ${tracedStrokes.reduce((n, s) => n + s.length, 0)} points`;
       renderGeneratedSvg(tracedStrokes);
       if (tracedStrokes.length) {
@@ -3029,8 +3230,13 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
       } else {
         document.getElementById('pipelineSvgCanvas').classList.add('hidden');
         document.getElementById('pipelineSvgEmpty').classList.remove('hidden');
-        selectPipelineStage('cutout');
+        selectPipelineStage('sketch');
       }
+      button.disabled = false;
+      button.innerHTML = selectedPhotoArtLineCanvas
+        ? '<i class="fa-solid fa-bezier-curve mr-1"></i>Trace sketch to SVG'
+        : '<i class="fa-solid fa-bezier-curve mr-1"></i>Trace with built-in tool';
+      updatePipelineHint();
     }
 
     // Build a simplified silhouette + internal line drawing from the clean cutout.

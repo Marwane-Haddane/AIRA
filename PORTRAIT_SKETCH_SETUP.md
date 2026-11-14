@@ -8,7 +8,7 @@ Install the runtime and download the roughly 176 MB model once:
 powershell -ExecutionPolicy Bypass -File .\Setup-Portrait-Sketch.ps1
 ```
 
-The installer stores the model at `models\U2Net_Portrait_Sketch.tflite`. Restart `Run-RoboGenius.ps1` after setup, upload a photo, then choose **Portrait Sketch** in the clean cutout stage to compare it with ArtLine. The result still needs SVG review and explicit validation before it can be sent to the robot.
+The installer stores the model at `models\U2Net_Portrait_Sketch.tflite`. Restart `Run-RoboGenius.ps1` after setup, upload a photo, then choose **Portrait Sketch** in the AI Sketch stage to compare it with ArtLine. Review that generated image before tracing it to SVG. The SVG still needs explicit validation before it can be sent to the robot.
 
 The local studio runs at `http://127.0.0.1:8767/` by default. Set `ROBOGENIUS_PORT` if that port is already in use.
 

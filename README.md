@@ -10,7 +10,8 @@ The project includes a main digital-twin studio and a separate AI portrait-to-SV
 
 - **Photo input:** upload a portrait or capture one from a camera.
 - **Portrait preparation:** remove the background, then choose between ArtLine and the local U²-Net Portrait Sketch style.
-- **SVG review:** convert the selected line-art image into plotter strokes, adjust tracing detail, preview and download the SVG, and validate it before it enters the drawing workflow.
+- **Four-step portrait flow:** inspect the photo, the cleaned cutout, the generated AI sketch, and finally the plotter-ready SVG. The sketch and SVG are separate review steps.
+- **SVG review:** convert the approved sketch into plotter strokes, adjust tracing detail, preview and download the SVG, and validate it before it enters the drawing workflow.
 - **Dobot digital twin:** inspect the modeled robot and paper, adjust joints and pen state, and view the plot path in 3D.
 - **Physical drawing:** connect to a Dobot Magician Classic over USB/serial when ready. Connecting does not start motion. A physical job requires a validated drawing, operator confirmation, and all four setup checks in the app.
 - **Model export:** export the digital-twin robot as GLB for use in other 3D tools.
@@ -65,11 +66,11 @@ The image-to-SVG pipeline is photo-dependent. Use a well-lit, centered portrait 
 ### Use the photo-to-drawing workflow
 
 1. Open **AI Portrait Studio** and upload a photo or capture one.
-2. Wait for background removal, then choose **ArtLine** or **Portrait Sketch** in the cutout stage.
-3. Review the generated SVG. Adjust edge sensitivity/detail, regenerate, and download if needed.
-4. Select **Validate SVG** only after the paths and paper placement look right.
-5. Use the digital twin to check the robot and paper alignment.
-6. Connect the physical Dobot only when you are ready. Complete all four physical setup checks and explicitly confirm the job.
+2. Review the cleaned subject after background removal.
+3. Wait for the **AI Sketch** step to finish. Inspect the generated image; switch between ArtLine and Portrait Sketch to compare styles. A progress indicator appears while the model is working.
+4. Click **Trace sketch to SVG** only after the sketch looks right. Adjust edge sensitivity/detail and trace again if needed.
+5. Review and download the vector paths. Select **Validate SVG** only after the paths and paper placement look right.
+6. Use the digital twin to check robot and paper alignment. Connect the physical Dobot only when you are ready, then complete all four setup checks and explicitly confirm the job.
 
 ## Run the standalone AI portrait-to-SVG studio
 
