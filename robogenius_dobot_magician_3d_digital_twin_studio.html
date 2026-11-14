@@ -458,12 +458,11 @@
               </div>
               <div class="space-y-1.5">
                 <div class="text-[10px] text-slate-400">Sketch model</div>
-                <div class="grid grid-cols-3 gap-1.5">
+                <div class="grid grid-cols-2 gap-1.5">
                   <button id="portraitStyleArtLine" type="button" onclick="selectPortraitStyle('artline')" class="portrait-style-btn py-1.5 rounded-md border text-[9px] font-semibold">ArtLine</button>
                   <button id="portraitStyleU2Net" type="button" onclick="selectPortraitStyle('u2net')" class="portrait-style-btn active py-1.5 rounded-md border text-[9px] font-semibold">U²-Net</button>
-                  <a href="https://github.com/yiranran/APDrawingGAN2" target="_blank" rel="noopener noreferrer" title="APDrawingGAN++ upstream model; requires separate checkpoints and face preprocessing" class="flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-md border border-slate-700 bg-slate-900/60 text-[9px] font-semibold text-slate-300 hover:border-cyan-500/50"><span>APDrawingGAN++</span><span class="text-[8px] font-normal text-amber-300">Setup required</span></a>
                 </div>
-                <p class="text-[9px] text-slate-500 leading-snug">U²-Net Portrait Sketch runs locally. APDrawingGAN++ is shown for reference; it needs separate model weights and aligned face inputs before it can run here.</p>
+                <p class="text-[9px] text-slate-500 leading-snug">Both models run locally. U²-Net is the default; ArtLine is available after its optional model setup.</p>
               </div>
               <p id="sketchHelp" class="text-[10px] text-slate-500 leading-relaxed">Review the generated image first. The SVG step converts this sketch into robot paths.</p>
               <div class="grid grid-cols-2 gap-2 text-[10px] text-slate-400">

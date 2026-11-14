@@ -14,4 +14,4 @@ The local studio runs at `http://127.0.0.1:8767/` by default. Set `ROBOGENIUS_PO
 
 Model card and license: https://huggingface.co/litert-community/U2Net-Portrait-Sketch-LiteRT
 
-APDrawingGAN++ is linked from the sketch model picker for reference, but it is not runnable in this app yet. Its upstream instructions require separately downloaded checkpoints plus aligned face images, landmarks, and masks. U²-Net is the installed local model for portrait sketches; ArtLine is the other integrated option.
+APDrawingGAN++ is not included in the current app. U²-Net is the installed local model for portrait sketches; ArtLine is the other integrated option.

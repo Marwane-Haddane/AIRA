@@ -9,7 +9,7 @@ The project includes a main digital-twin studio and a separate AI portrait-to-SV
 ## What it does
 
 - **Photo input:** upload a portrait or capture one from a camera.
-- **Portrait preparation:** remove the background, then choose between ArtLine and the local U²-Net Portrait Sketch style. APDrawingGAN++ is linked in the model picker but is not yet runnable in this app because its weights and face-alignment pipeline are not installed.
+- **Portrait preparation:** remove the background, then choose between ArtLine and the local U²-Net Portrait Sketch style.
 - **Four-step portrait flow:** inspect the photo, the cleaned cutout, the generated AI sketch, and finally the plotter-ready SVG. The sketch and SVG are separate review steps.
 - **SVG review:** convert the approved sketch into plotter strokes, adjust tracing detail, preview and download the SVG, and validate it before it enters the drawing workflow.
 - **Dobot digital twin:** inspect the modeled robot and paper, adjust joints and pen state, and view the plot path in 3D.
