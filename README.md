@@ -9,7 +9,7 @@ The project includes a main digital-twin studio and a separate AI portrait-to-SV
 ## What it does
 
 - **Photo input:** upload a portrait or capture one from a camera.
-- **Portrait preparation:** remove the background, then choose between ArtLine and the local U²-Net Portrait Sketch style.
+- **Portrait preparation:** remove the background, then choose between ArtLine and the local U²-Net Portrait Sketch style. APDrawingGAN++ is linked in the model picker but is not yet runnable in this app because its weights and face-alignment pipeline are not installed.
 - **Four-step portrait flow:** inspect the photo, the cleaned cutout, the generated AI sketch, and finally the plotter-ready SVG. The sketch and SVG are separate review steps.
 - **SVG review:** convert the approved sketch into plotter strokes, adjust tracing detail, preview and download the SVG, and validate it before it enters the drawing workflow.
 - **Dobot digital twin:** inspect the modeled robot and paper, adjust joints and pen state, and view the plot path in 3D.
@@ -52,7 +52,7 @@ The app loads Three.js, Tailwind, and MediaPipe components from CDNs, so the bro
 
 ### Portrait styles
 
-- **Portrait Sketch (U²-Net):** included as the practical local comparison style. Run `Setup-Portrait-Sketch.ps1` to install its LiteRT runtime and download the model.
+- **U²-Net Portrait Sketch:** included as the practical local comparison style. Run `Setup-Portrait-Sketch.ps1` to install its LiteRT runtime and download the model. It appears as **U²-Net** in the sketch model picker.
 - **ArtLine:** optional legacy model. It uses a separate Python 3.8 environment and downloads a roughly 356 MB checkpoint. To install it, run:
 
   ```powershell
