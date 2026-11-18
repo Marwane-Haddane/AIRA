@@ -37,7 +37,7 @@ AIRA is the software behind that experience at the **RoboGenius Robotics Lab (EN
 | --- | --- | --- |
 | **1 · Photo** | Upload a portrait or capture one from the camera | Browser |
 | **2 · Cutout** | MediaPipe removes the background | Browser |
-| **3 · AI sketch** | U²-Net Portrait Sketch (or ArtLine) draws a line portrait | Local Python service |
+| **3 · AI sketch** | AI Coloring (FLUX.2 [klein], free Cloudflare tier) draws a coloring-book page; Clean Line, U²-Net or ArtLine run fully offline | Cloudflare Workers AI or local Python service |
 | **4 · SVG** | The approved sketch is traced into pen strokes, then validated against the paper | Browser |
 | **5 · Digital twin** | The 3D Dobot plots the strokes so you can check reach, paper and pen | Browser (Three.js) |
 | **6 · Dobot** | The validated job is streamed to the robot over USB serial | Local Python service |
@@ -64,7 +64,28 @@ AIRA is the software behind that experience at the **RoboGenius Robotics Lab (EN
   </tr>
 </table>
 
-<sub>All screenshots are taken from the running app on a PC with no robot connected (<code>USB not connected</code>). The drawings are AIRA's built-in vector presets, so no personal photos appear here.</sub>
+<sub>These screenshots are taken from the running app on a PC with no robot connected (<code>USB not connected</code>), using AIRA's built-in vector presets.</sub>
+
+## From photo to coloring page
+
+**AI Coloring** turns a portrait into a clean coloring-book page with FLUX.2 [klein] on the free Cloudflare Workers AI tier, then traces it into pen strokes on your computer. Photos without a person (a place, an object) keep their own composition instead of being turned into a portrait.
+
+<p align="center"><img src="docs/readme/ai-page-to-strokes.jpg" alt="Left: the AI coloring page generated from a football player's photo. Right: the centerline pen strokes traced from it" width="100%" /></p>
+<p align="center"><em>Left: the AI coloring page. Right: the centerline strokes the Dobot draws (traced locally in under a second).</em></p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/readme/pipeline-ai-coloring.jpg" alt="Four-step portrait flow with the AI Coloring sketch and its SVG" /><p align="center"><b>AI Coloring</b><br><sub>Clean outlines, hair strands, collar and seams.</sub></p></td>
+    <td width="50%"><img src="docs/readme/pipeline-clean-line.jpg" alt="Four-step portrait flow with the local Clean Line sketch and its SVG" /><p align="center"><b>Clean Line (offline)</b><br><sub>The fallback when there is no key, no internet or no quota left.</sub></p></td>
+  </tr>
+  <tr>
+    <td><img src="docs/readme/studio-ai-selfie.jpg" alt="Studio with a validated AI Coloring selfie being plotted on the digital twin's paper" /><p align="center"><b>Validated and plotting</b><br><sub>A selfie drawn by the digital twin.</sub></p></td>
+    <td><img src="docs/readme/plot-ai-portrait.jpg" alt="Digital twin pen plotting an AI Coloring portrait, 5,024 points complete" /><p align="center"><b>Plot complete</b><br><sub>5,024 points on the 130 × 130 mm sheet.</sub></p></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/readme/archive.jpg" alt="Archive panel listing past runs with the input photo, AI page, SVG, date, stroke count and time" width="60%" /><p align="center"><b>Archive</b><br><sub>Every AI Coloring and Clean Line run keeps its photo, sketch, SVG, date and processing time (stored in <code>archive/</code>, git-ignored). Download or delete runs from the studio.</sub></p></td>
+  </tr>
+</table>
 
 ## What works today
 
@@ -163,13 +184,16 @@ No robot is needed to explore the digital twin, plot the presets, upload a photo
 ### Install and start
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File .\Setup-Clean-Line.ps1
 powershell -ExecutionPolicy Bypass -File .\Setup-Portrait-Sketch.ps1
 .\Run-RoboGenius.ps1
 ```
 
-The setup script creates `.venv`, installs the dependencies and downloads the ~176 MB U²-Net model into `models/`. The run script starts the local service; open the address it prints, normally **http://127.0.0.1:8767/**.
+`Setup-Clean-Line.ps1` installs the **Clean Line** engine (the default sketch style) and downloads its four models (~250 MB) into `models/`: BiSeNet face parsing, the U²-Net human matte, the Informative Drawings line network and the YuNet face detector. The portrait-sketch script creates `.venv`, installs the dependencies and downloads the ~176 MB U²-Net model into `models/`. The run script starts the local service; open the address it prints, normally **http://127.0.0.1:8767/**.
 
-The page loads Three.js, Tailwind and MediaPipe from CDNs, so the browser needs internet access the first time. Photo processing stays on the machine.
+The page loads Three.js, Tailwind and MediaPipe from CDNs, so the browser needs internet access the first time.
+
+**AI Coloring (default, free tier).** For coloring-book pages like a professional illustration, the studio sends the cropped head-and-shoulders portrait to FLUX.2 [klein] on Cloudflare Workers AI and traces the returned page into plotter strokes locally. The free Workers AI allocation (10,000 neurons/day, reset 00:00 UTC) covers about 90 drawings a day. To enable it, copy `.env.example` to `.env` and fill in your Cloudflare account ID and an API token made from the **Workers AI** template, then restart the service. Without a key, offline, or once the daily quota is used, AI Coloring falls back to local Clean Line automatically. With AI Coloring the photo leaves the machine; every other style keeps photo processing on the machine.
 
 **Optional: ArtLine.** It uses a separate Python 3.8 environment and a ~356 MB checkpoint:
 
@@ -183,7 +207,7 @@ Restart the main studio afterwards. Without ArtLine, U²-Net and the browser's b
 
 1. Open **AI Portrait Studio** and upload or capture a photo.
 2. Review the cleaned cutout.
-3. Wait for the **AI Sketch**, then inspect it. Switch between U²-Net and ArtLine to compare styles.
+3. Wait for the **AI Sketch**, then inspect it. **AI Coloring** (default) gives the cleanest coloring-book page; **Clean Line** builds one fully offline; switch to U²-Net or ArtLine to compare sketch styles. With Clean Line, *Detail* and *Edge sensitivity* control facial detail and hair/clothing lines, and tracing again re-runs it with the new settings.
 4. Click **Trace sketch to SVG** only when the sketch looks right. Adjust edge sensitivity/detail and trace again if needed.
 5. Review or download the paths, then **Validate SVG** when the paths and paper placement look right.
 6. Watch the digital twin plot it. Connect the Dobot only when ready, complete the four setup checks and confirm the job.
@@ -213,9 +237,10 @@ Open **http://127.0.0.1:8766/**. The first launch downloads the ONNX portrait an
 | --- | --- |
 | [`robogenius_dobot_magician_3d_digital_twin_studio.html`](robogenius_dobot_magician_3d_digital_twin_studio.html) | Main Three.js digital twin and drawing UI |
 | [`dobot_service.py`](dobot_service.py) | Loopback-only web service and guarded Dobot serial bridge |
+| [`portrait_lineart/`](portrait_lineart) | Clean Line engine: face-aligned framing, face parsing, coloring-book line composition and the centerline vectorizer (`vectorize.py`); `cloud_ai.py` is the AI Coloring client |
 | [`portrait_sketch_runner.py`](portrait_sketch_runner.py) | Local LiteRT inference for U²-Net Portrait Sketch |
 | [`artline_runner.py`](artline_runner.py) | Optional ArtLine inference adapter |
-| `Setup-Portrait-Sketch.ps1`, `Setup-ArtLine.ps1`, `Run-RoboGenius.ps1` | Installers and launcher |
+| `Setup-Clean-Line.ps1`, `Setup-Portrait-Sketch.ps1`, `Setup-ArtLine.ps1`, `Run-RoboGenius.ps1` | Installers and launcher |
 | `dobot_magician_classic_digital_twin.glb` | 3D robot model |
 | [`svg gen/`](svg%20gen) | Standalone AI portrait-to-SVG studio |
 | `RoboGenius_Dobot_AI_Portrait_Project_Dossier.pdf` | Project dossier |
@@ -228,6 +253,8 @@ Model weights and Python environments are excluded from Git; the setup scripts d
 | Problem | Fix |
 | --- | --- |
 | Port 8767 is busy | `$env:ROBOGENIUS_PORT = '8771'` before starting, then open the printed address |
+| "AI Coloring unavailable, used local Clean Line" | Check `.env` (account ID and token), internet access, or wait for the daily free quota to reset at 00:00 UTC |
+| Clean Line unavailable or very sparse | Re-run `Setup-Clean-Line.ps1` (face parsing is what draws hairline, jaw, eyes and lips), restart the service |
 | Portrait Sketch unavailable | Re-run `Setup-Portrait-Sketch.ps1`, confirm the model downloaded, restart the service |
 | ArtLine unavailable | It's optional; install with `Setup-ArtLine.ps1` |
 | Camera doesn't open | Use the local `http://127.0.0.1` address, allow camera access, close other apps using it |
@@ -239,6 +266,8 @@ Model weights and Python environments are excluded from Git; the setup scripts d
 - [U²-Net Portrait Sketch LiteRT](https://huggingface.co/litert-community/U2Net-Portrait-Sketch-LiteRT): Apache-2.0 model card.
 - [ArtLine](https://github.com/vijishmadhavan/ArtLine): MIT upstream; checkpoint downloaded separately.
 - [Informative Drawings ONNX](https://huggingface.co/rocca/informative-drawings-line-art-onnx) and [YuNet](https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet): downloaded by the standalone app. Check upstream terms before redistribution or commercial use.
+- [BiSeNet face parsing ONNX](https://github.com/yakhyo/face-parsing) (Clean Line): MIT code; the weights are trained on CelebAMask-HQ, whose terms are non-commercial research and education only.
+- [rembg `u2net_human_seg`](https://github.com/danielgatis/rembg) (Clean Line matte): downloaded by `Setup-Clean-Line.ps1`.
 - Python packages and browser libraries keep their own licenses.
 
 No license has been chosen yet for AIRA's own source code, so publishing the repository does not grant reuse rights.

@@ -155,6 +155,7 @@
     #photoWorkflowCard #svgReviewPreview { max-height:220px; }
     #photoDock > #cameraViewCard { margin:12px 12px 0; }
     #photoDock > #paperPreviewCard { margin:12px 12px 12px; }
+    #photoDock > #archiveCard { margin:0 12px 12px; }
     #photoDock > #photoWorkflowCard { margin:12px 12px 0; padding:12px !important; }
 
     /* Four-stage portrait pipeline cards */
@@ -458,11 +459,13 @@
               </div>
               <div class="space-y-1.5">
                 <div class="text-[10px] text-slate-400">Sketch model</div>
-                <div class="grid grid-cols-2 gap-1.5">
+                <div class="grid grid-cols-4 gap-1.5">
+                  <button id="portraitStyleAI" type="button" onclick="selectPortraitStyle('ai')" class="portrait-style-btn active py-1.5 rounded-md border text-[9px] font-semibold">AI Coloring</button>
+                  <button id="portraitStyleClean" type="button" onclick="selectPortraitStyle('clean')" class="portrait-style-btn py-1.5 rounded-md border text-[9px] font-semibold">Clean Line</button>
+                  <button id="portraitStyleU2Net" type="button" onclick="selectPortraitStyle('u2net')" class="portrait-style-btn py-1.5 rounded-md border text-[9px] font-semibold">U²-Net</button>
                   <button id="portraitStyleArtLine" type="button" onclick="selectPortraitStyle('artline')" class="portrait-style-btn py-1.5 rounded-md border text-[9px] font-semibold">ArtLine</button>
-                  <button id="portraitStyleU2Net" type="button" onclick="selectPortraitStyle('u2net')" class="portrait-style-btn active py-1.5 rounded-md border text-[9px] font-semibold">U²-Net</button>
                 </div>
-                <p class="text-[9px] text-slate-500 leading-snug">Both models run locally. U²-Net is the default; ArtLine is available after its optional model setup.</p>
+                <p class="text-[9px] text-slate-500 leading-snug">AI Coloring (default) sends the cropped portrait to the free Cloudflare Workers AI tier (about 90 drawings a day) and traces the result on this computer; without a key or when the daily quota is used it falls back to Clean Line. Clean Line, U²-Net and ArtLine run fully locally.</p>
               </div>
               <p id="sketchHelp" class="text-[10px] text-slate-500 leading-relaxed">Review the generated image first. The SVG step converts this sketch into robot paths.</p>
               <div class="grid grid-cols-2 gap-2 text-[10px] text-slate-400">
@@ -483,6 +486,16 @@
               </div>
               <div id="validatedBanner" class="hidden text-[10px] text-emerald-300"><i class="fa-solid fa-circle-check mr-1"></i>Validated. Connect the Dobot and complete setup to draw.</div>
             </div>
+          </div>
+
+          <!-- Run archive: input, outputs and time of every AI Coloring / Clean Line run -->
+          <div id="archiveCard" class="bg-rg-card p-3 rounded-xl border border-rg-border space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-white flex items-center gap-1.5"><i class="fa-solid fa-clock-rotate-left text-amber-300"></i> Archive</span>
+              <button type="button" onclick="loadArchive()" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700"><i class="fa-solid fa-rotate mr-1"></i>Refresh</button>
+            </div>
+            <p id="archiveStatus" class="text-[10px] text-slate-500">Every AI Coloring and Clean Line run is saved here with its photo, sketch, SVG and time.</p>
+            <div id="archiveList" class="space-y-1.5 max-h-80 overflow-y-auto pr-1"></div>
           </div>
 
           <!-- 2D Live Virtual Paper Canvas Inspector -->
@@ -1063,8 +1076,10 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
     let cameraStream = null;
     let selectedPhotoCutout = null; // { canvas, mask, width, height, fallback }
     let selectedPhotoArtLineCanvas = null;
-    let selectedPhotoStyleCanvases = { artline: null, u2net: null };
-    let selectedPhotoStyle = 'u2net';
+    let selectedPhotoStyleCanvases = { ai: null, clean: null, artline: null, u2net: null };
+    let selectedPhotoStyle = 'ai';
+    let selectedPhotoCleanStrokes = null; // server-traced centerline strokes for Clean Line
+    let selectedPhotoCleanKey = null;     // slider settings used for those strokes
     let portraitSegmenterPromise = null;
     let portraitPipelineToken = 0;
     let activePipelineStage = 'photo';
@@ -2596,7 +2611,7 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
           selectedPhotoImage = img;
           selectedPhotoName = name || 'photo';
           selectedPhotoArtLineCanvas = null;
-          selectedPhotoStyleCanvases = { artline: null, u2net: null };
+          selectedPhotoStyleCanvases = { ai: null, clean: null, artline: null, u2net: null }; selectedPhotoCleanStrokes = null; selectedPhotoCleanKey = null;
           selectedPhotoCutout = null;
           plotterState.pendingPhotoStrokes = null;
           plotterState.photoSvgValidated = false;
@@ -2669,7 +2684,7 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
     function clearPhotoSource() {
       selectedPhotoImage = null;
       selectedPhotoArtLineCanvas = null;
-      selectedPhotoStyleCanvases = { artline: null, u2net: null };
+      selectedPhotoStyleCanvases = { ai: null, clean: null, artline: null, u2net: null }; selectedPhotoCleanStrokes = null; selectedPhotoCleanKey = null;
       selectedPhotoCutout = null;
       portraitPipelineToken++;
       plotterState.pendingPhotoStrokes = null;
@@ -2929,7 +2944,7 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
       const token = ++portraitPipelineToken;
       selectedPhotoCutout = null;
       selectedPhotoArtLineCanvas = null;
-      selectedPhotoStyleCanvases = { artline: null, u2net: null };
+      selectedPhotoStyleCanvases = { ai: null, clean: null, artline: null, u2net: null }; selectedPhotoCleanStrokes = null; selectedPhotoCleanKey = null;
       plotterState.pendingPhotoStrokes = null;
       plotterState.photoSvgValidated = false;
       document.getElementById('traceSketchButton').disabled = true;
@@ -2975,7 +2990,7 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
         if (token !== portraitPipelineToken) return;
 
         selectedPhotoCutout = cutout;
-        selectedPhotoStyleCanvases = { artline: null, u2net: null };
+        selectedPhotoStyleCanvases = { ai: null, clean: null, artline: null, u2net: null }; selectedPhotoCleanStrokes = null; selectedPhotoCleanKey = null;
         selectedPhotoArtLineCanvas = null;
         document.getElementById('pipelineCutoutSpinner').classList.add('hidden');
         document.getElementById('pipelineCutoutEmpty').classList.add('hidden');
@@ -2991,7 +3006,7 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
         setPortraitSketchLoading(false);
         if (modelReady) {
           paintPortraitSketchPreview();
-          document.getElementById('sketchStatus').textContent = `${selectedPhotoStyle === 'u2net' ? 'U²-Net Portrait Sketch' : 'ArtLine'} ready`;
+          document.getElementById('sketchStatus').textContent = `${portraitStyleLabel(selectedPhotoStyle)} ready`;
           document.getElementById('sketchHelp').textContent = 'Review this generated image, then trace it into SVG paths.';
           document.getElementById('vectorStatus').textContent = '3 · Review AI sketch';
         } else {
@@ -3057,9 +3072,137 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
       }
     }
 
+    function portraitStyleLabel(style) {
+      return style === 'ai' ? 'AI Coloring' : style === 'clean' ? 'Clean Line' : style === 'u2net' ? 'U²-Net Portrait Sketch' : 'ArtLine';
+    }
+
+    function cleanLineSettings() {
+      const detail = Number(document.getElementById('detailLimit').value) || 90;
+      const sensitivity = Number(document.getElementById('edgeThreshold').value) || 145;
+      const amount = Math.min(1, Math.max(0, (sensitivity - 35) / 185));
+      return {
+        detail: Math.min(1, Math.max(0, (detail - 20) / 100)),
+        hair: amount,
+        clothing: Math.min(1, amount * 0.8)
+      };
+    }
+
+    const ARCHIVE_ENGINE_LABEL = { ai: 'AI Coloring', clean: 'Clean Line' };
+
+    async function loadArchive() {
+      const list = document.getElementById('archiveList');
+      const status = document.getElementById('archiveStatus');
+      if (!list || !robotServiceBase) return;
+      try {
+        const payload = await fetch(`${robotServiceBase}/api/archive`).then((r) => r.json());
+        const runs = payload.runs || [];
+        list.replaceChildren();
+        status.textContent = runs.length
+          ? `${runs.length} saved run${runs.length === 1 ? '' : 's'} (newest first).`
+          : 'No runs yet. Generate an AI Sketch to start the archive.';
+        for (const run of runs) {
+          const base = `${robotServiceBase}/api/archive/${run.id}`;
+          const row = document.createElement('div');
+          row.className = 'flex gap-2 items-center rounded-lg border border-slate-700/60 bg-rg-bg p-1.5';
+          const thumb = (file, title) => {
+            const a = document.createElement('a');
+            a.href = `${base}/${file}`; a.target = '_blank'; a.rel = 'noopener'; a.title = title;
+            const img = document.createElement('img');
+            img.src = `${base}/${file}`; img.alt = title; img.loading = 'lazy';
+            img.className = 'w-12 h-12 object-cover rounded bg-white border border-slate-700';
+            a.appendChild(img);
+            return a;
+          };
+          row.appendChild(thumb('input.jpg', 'Input photo'));
+          if ((run.files || []).includes('page.png')) row.appendChild(thumb('page.png', 'AI coloring page'));
+          row.appendChild(thumb('drawing.svg', 'Plotter SVG'));
+          const meta = document.createElement('div');
+          meta.className = 'flex-1 min-w-0 text-[10px] leading-snug';
+          const when = new Date(run.created);
+          const title = document.createElement('div');
+          title.className = 'text-slate-200 font-semibold truncate';
+          title.textContent = `${ARCHIVE_ENGINE_LABEL[run.engine] || run.engine}${run.subject && run.subject !== 'portrait' ? ' · ' + run.subject : ''}`;
+          const time = document.createElement('div');
+          time.className = 'text-slate-400 font-mono';
+          time.textContent = isNaN(when) ? run.created : when.toLocaleString();
+          const stats = document.createElement('div');
+          stats.className = 'text-slate-500';
+          stats.textContent = `${run.stroke_count} strokes · ${run.seconds}s${run.ai_error ? ' · AI fallback' : ''}`;
+          meta.append(title, time, stats);
+          row.appendChild(meta);
+          const actions = document.createElement('div');
+          actions.className = 'flex flex-col gap-1';
+          const dl = document.createElement('a');
+          dl.href = `${base}/drawing.svg`; dl.download = `aira-${run.id}.svg`; dl.title = 'Download SVG';
+          dl.className = 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300 hover:bg-slate-700 text-center';
+          dl.innerHTML = '<i class="fa-solid fa-download"></i>';
+          const del = document.createElement('button');
+          del.type = 'button'; del.title = 'Delete this run';
+          del.className = 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-rose-300 hover:bg-slate-700';
+          del.innerHTML = '<i class="fa-solid fa-trash"></i>';
+          del.onclick = () => deleteArchiveRun(run.id);
+          actions.append(dl, del);
+          row.appendChild(actions);
+          list.appendChild(row);
+        }
+      } catch (error) {
+        status.textContent = 'Archive needs the local app (run Run-RoboGenius.ps1).';
+      }
+    }
+
+    async function deleteArchiveRun(id) {
+      if (!confirm('Delete this archived run (photo, sketch and SVG)? This cannot be undone.')) return;
+      await fetch(`${robotServiceBase}/api/archive/delete`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id })
+      });
+      loadArchive();
+    }
+
+    async function requestCleanLine(cutoutCanvas, engine = 'clean') {
+      if (!robotServiceBase) throw new Error('Start the local app to run Clean Line on this computer.');
+      const settings = cleanLineSettings();
+      const photoCanvas = selectedPhotoImage ? createWorkingCanvas(selectedPhotoImage, 1600) : null;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 185000);
+      try {
+        const response = await fetch(`${robotServiceBase}/api/clean-line`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image: cutoutCanvas.toDataURL('image/png'),
+            photo: photoCanvas ? photoCanvas.toDataURL('image/jpeg', 0.92) : '',
+            engine,
+            ...settings
+          }),
+          signal: controller.signal
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.image) throw new Error(payload.error || 'Clean Line could not process this photo.');
+        const image = new Image();
+        await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; image.src = payload.image; });
+        const canvas = document.createElement('canvas');
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        canvas.getContext('2d', { willReadFrequently: true }).drawImage(image, 0, 0);
+        loadArchive();
+        canvas.serverStrokes = (payload.strokes || [])
+          .map((stroke) => stroke.map(([x, y]) => ({ x, y })))
+          .filter((stroke) => stroke.length >= 2);
+        canvas.serverKey = JSON.stringify(settings);
+        canvas.serverEngine = (payload.info && payload.info.engine) || engine;
+        selectedPhotoCleanStrokes = canvas.serverStrokes;
+        selectedPhotoCleanKey = canvas.serverKey;
+        if (engine === 'ai' && payload.info && payload.info.ai_error) {
+          canvas.fallbackNote = `AI Coloring unavailable, used local Clean Line instead: ${payload.info.ai_error}`;
+        }
+        return canvas;
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
     async function preparePortraitStyle(cutoutCanvas, token) {
       const style = selectedPhotoStyle;
-      const label = style === 'u2net' ? 'U²-Net Portrait Sketch' : 'ArtLine';
+      const label = portraitStyleLabel(style);
       document.getElementById('sketchStatus').textContent = `Generating ${label}…`;
       if (selectedPhotoStyleCanvases[style]) {
         selectedPhotoArtLineCanvas = selectedPhotoStyleCanvases[style];
@@ -3067,13 +3210,16 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
         return true;
       }
       try {
-        const canvas = style === 'u2net'
-          ? await requestPortraitSketch(cutoutCanvas)
-          : await requestArtLine(cutoutCanvas);
+        const canvas = (style === 'clean' || style === 'ai')
+          ? await requestCleanLine(cutoutCanvas, style)
+          : style === 'u2net'
+            ? await requestPortraitSketch(cutoutCanvas)
+            : await requestArtLine(cutoutCanvas);
         if (token !== portraitPipelineToken) return false;
         selectedPhotoStyleCanvases[style] = canvas;
         selectedPhotoArtLineCanvas = canvas;
-        document.getElementById('sketchStatus').textContent = `${label} ready`;
+        document.getElementById('sketchStatus').textContent = canvas.fallbackNote ? 'Clean Line ready (AI fallback)' : `${label} ready`;
+        if (canvas.fallbackNote) document.getElementById('sketchHelp').textContent = canvas.fallbackNote;
         return true;
       } catch (error) {
         console.info(`${label} is unavailable; using the built-in portrait tracer.`, error);
@@ -3087,13 +3233,15 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
     }
 
     async function selectPortraitStyle(style) {
-      if (!['artline', 'u2net'].includes(style)) return;
+      if (!['ai', 'clean', 'artline', 'u2net'].includes(style)) return;
       selectedPhotoStyle = style;
+      document.getElementById('portraitStyleAI').classList.toggle('active', style === 'ai');
+      document.getElementById('portraitStyleClean').classList.toggle('active', style === 'clean');
       document.getElementById('portraitStyleArtLine').classList.toggle('active', style === 'artline');
       document.getElementById('portraitStyleU2Net').classList.toggle('active', style === 'u2net');
       if (!selectedPhotoCutout) return;
       const token = ++portraitPipelineToken;
-      const label = style === 'u2net' ? 'U²-Net Portrait Sketch' : 'ArtLine';
+      const label = portraitStyleLabel(style);
       selectedPhotoArtLineCanvas = null;
       invalidateVectorPreview();
       setPortraitSketchLoading(true);
@@ -3212,6 +3360,17 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
       document.getElementById('vectorStatus').textContent = '4 · Tracing SVG…';
       updatePipelineHint();
       await new Promise((resolve) => requestAnimationFrame(resolve));
+      if (selectedPhotoStyle === 'clean' && selectedPhotoStyleCanvases.clean
+          && selectedPhotoStyleCanvases.clean.serverKey !== JSON.stringify(cleanLineSettings())) {
+        try {
+          const canvas = await requestCleanLine(selectedPhotoCutout.canvas);
+          selectedPhotoStyleCanvases.clean = canvas;
+          selectedPhotoArtLineCanvas = canvas;
+          paintPortraitSketchPreview();
+        } catch (error) {
+          console.warn('Clean Line refresh failed; keeping the previous strokes.', error);
+        }
+      }
       const tracedStrokes = buildPortraitStrokes();
       plotterState.pendingPhotoStrokes = tracedStrokes;
       plotterState.photoSvgValidated = false;
@@ -3243,6 +3402,11 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
     // Build a simplified silhouette + internal line drawing from the clean cutout.
     function buildPortraitStrokes() {
       if (!selectedPhotoCutout) return [];
+      const serverStrokes = selectedPhotoArtLineCanvas && selectedPhotoArtLineCanvas.serverStrokes;
+      if ((selectedPhotoStyle === 'clean' || selectedPhotoStyle === 'ai') && serverStrokes && serverStrokes.length) {
+        // AI Coloring / Clean Line strokes are already centerline-traced, smoothed and ordered by the local service.
+        return serverStrokes.map((stroke) => stroke.map((pt) => ({ x: pt.x, y: pt.y })));
+      }
       const source = selectedPhotoArtLineCanvas || selectedPhotoCutout.canvas;
       const scale = Math.min(1, PORTRAIT_WORK_SIZE / Math.max(source.width, source.height));
       const w = Math.max(1, Math.round(source.width * scale));
@@ -4028,6 +4192,7 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
     }
 
     const robotServiceBase = window.location.protocol === 'file:' ? null : window.location.origin;
+    window.addEventListener('load', () => loadArchive());
     let robotServiceStatus = { connected: false, ports: [], job: { state: 'idle', message: 'Ready' }, serviceReady: false };
 
     function attachWorkspacePanels() {
@@ -4040,6 +4205,8 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
       const robotContent = document.querySelector('#rightSidebar > div');
       if (photo) document.getElementById('photoDock').appendChild(photo);
       if (paperPreview) document.getElementById('photoDock').appendChild(paperPreview);
+      const archiveCard = document.getElementById('archiveCard');
+      if (archiveCard) document.getElementById('photoDock').appendChild(archiveCard);
       if (presets && presetDrawer) presetDrawer.appendChild(presets);
       if (teach && robotContent) { teach.classList.remove('hidden'); robotContent.appendChild(teach); }
       if (safety && robotContent) { safety.classList.remove('hidden'); robotContent.appendChild(safety); }

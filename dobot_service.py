@@ -329,6 +329,29 @@ class RoboGeniusHandler(BaseHTTPRequestHandler):
             available = ARTLINE_PYTHON.is_file() and ARTLINE_CHECKPOINT.is_file()
             self._json(200, {"available": available, "model": "ArtLine" if available else None})
             return
+        if route == "/api/clean-line/status":
+            from portrait_lineart import service as clean_line
+            self._json(200, clean_line.status())
+            return
+        if route == "/api/archive":
+            from portrait_lineart import archive
+            self._json(200, {"ok": True, "runs": archive.list_runs()})
+            return
+        if route.startswith("/api/archive/"):
+            from portrait_lineart import archive
+            parts = route.split("/")
+            path = archive.file_path(parts[3], parts[4]) if len(parts) == 5 else None
+            if path is None:
+                self.send_error(404)
+                return
+            raw = path.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", archive.FILES[path.name])
+            self.send_header("Content-Length", str(len(raw)))
+            self.send_header("Cache-Control", "max-age=86400")
+            self.end_headers()
+            self.wfile.write(raw)
+            return
         if route == "/api/portrait-sketch/status":
             available = APP_PYTHON.is_file() and PORTRAIT_SKETCH_MODEL.is_file()
             self._json(200, {"available": available, "model": "U²-Net Portrait Sketch" if available else None})
@@ -376,6 +399,12 @@ class RoboGeniusHandler(BaseHTTPRequestHandler):
                         return
                     encoded_result = base64.b64encode(output.read_bytes()).decode("ascii")
                 self._json(200, {"ok": True, "image": f"data:image/png;base64,{encoded_result}"})
+            elif route == "/api/clean-line":
+                from portrait_lineart import service as clean_line
+                self._json(200, clean_line.run(body))
+            elif route == "/api/archive/delete":
+                from portrait_lineart import archive
+                self._json(200, {"ok": archive.delete(str(body.get("id", "")))})
             elif route == "/api/portrait-sketch":
                 image_data = str(body.get("image", ""))
                 if not image_data.startswith("data:image/png;base64,"):

@@ -1,3 +1,12 @@
 pyserial>=3.5,<4
 ai-edge-litert==2.3.0
 Pillow>=10,<14
+# Clean Line portrait engine (portrait_lineart/)
+numpy>=1.26,<3
+scipy>=1.11,<2
+opencv-python-headless>=4.10,<6
+scikit-image>=0.23,<0.27
+onnxruntime>=1.20,<2
+rembg>=2.0.60,<3
+# AI Coloring client (portrait_lineart/cloud_ai.py)
+requests>=2.31,<3

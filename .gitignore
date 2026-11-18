@@ -10,6 +10,8 @@ __pycache__/
 models/*.pkl
 models/*.tflite
 svg gen/models/*.onnx
+models/*.onnx
+models/*.part
 
 # Local config, temporary downloads, and generated output
 .env
@@ -19,3 +21,9 @@ svg gen/models/*.onnx
 *.log
 output/
 results/
+
+# Research scratch notes (the final report lives in reports/) and local test material
+research_notes/
+archive/
+version mohsin/
+test/
