@@ -1,30 +1,153 @@
-# AIRA — RoboGenius Dobot Drawing Studio
+<p align="center">
+  <img src="docs/readme/hero.jpg" alt="AIRA: from a face to a drawing on a Dobot Magician. A 3D digital twin and a local AI portrait studio that turns a photo into validated plotter paths." width="100%" />
+</p>
 
-AIRA is a local-first portrait-to-plotter project for the **Dobot Magician Classic**. It combines a Three.js digital twin with tools that turn a photo into editable drawing paths, let an operator review the result, and—when a Dobot is connected—send an explicitly validated drawing to the robot.
+<p align="center">
+  <a href="#run-the-main-studio-on-windows"><img alt="Run locally on Windows" src="https://img.shields.io/badge/Run-locally%20on%20Windows-22D3EE?style=for-the-badge&amp;labelColor=0B1220"></a>
+  <a href="#safety-by-design"><img alt="Guarded robot control" src="https://img.shields.io/badge/Robot%20control-guarded-10B981?style=for-the-badge&amp;labelColor=0B1220"></a>
+</p>
+<p align="center">
+  <img alt="Three.js digital twin" src="https://img.shields.io/badge/Three.js-digital%20twin-000000?logo=threedotjs&amp;logoColor=white">
+  <img alt="Python 3.13" src="https://img.shields.io/badge/Python-3.13-3776AB?logo=python&amp;logoColor=white">
+  <img alt="MediaPipe segmentation" src="https://img.shields.io/badge/MediaPipe-segmentation-0097A7?logo=google&amp;logoColor=white">
+  <img alt="U2-Net Portrait Sketch on LiteRT" src="https://img.shields.io/badge/U%C2%B2--Net-LiteRT-FF6F00?logo=tensorflow&amp;logoColor=white">
+  <img alt="ONNX Runtime" src="https://img.shields.io/badge/ONNX-line%20art-005CED?logo=onnx&amp;logoColor=white">
+  <img alt="Dobot Magician Classic" src="https://img.shields.io/badge/Dobot-Magician%20Classic-1E293B">
+  <img alt="Local first" src="https://img.shields.io/badge/photos-stay%20on%20your%20PC-22C55E">
+</p>
+<p align="center">
+  <a href="#aira-in-one-minute">Overview</a> ·
+  <a href="#see-it-draw">See it draw</a> ·
+  <a href="#what-works-today">Features</a> ·
+  <a href="#from-photo-to-pen-strokes">AI pipeline</a> ·
+  <a href="#architecture">Architecture</a> ·
+  <a href="#safety-by-design">Safety</a> ·
+  <a href="#run-the-main-studio-on-windows">Setup</a>
+</p>
 
-The project includes a main digital-twin studio and a separate AI portrait-to-SVG studio. Both run on your computer. Photos are sent only to a local loopback service for processing; model weights are downloaded from their upstream sources during setup or first use.
+---
 
-> **Project status:** experimental. Start with the digital twin and a disconnected robot. Validate paper size, pen position, workspace clearance, and the SVG before any physical job.
+## AIRA in one minute
 
-## What it does
+A visitor sits in front of the camera. Moments later, a **Dobot Magician Classic** starts drawing their portrait with a pen.
 
-- **Photo input:** upload a portrait or capture one from a camera.
-- **Portrait preparation:** remove the background, then choose between ArtLine and the local U²-Net Portrait Sketch style.
-- **Four-step portrait flow:** inspect the photo, the cleaned cutout, the generated AI sketch, and finally the plotter-ready SVG. The sketch and SVG are separate review steps.
-- **SVG review:** convert the approved sketch into plotter strokes, adjust tracing detail, preview and download the SVG, and validate it before it enters the drawing workflow.
-- **Dobot digital twin:** inspect the modeled robot and paper, adjust joints and pen state, and view the plot path in 3D.
-- **Physical drawing:** connect to a Dobot Magician Classic over USB/serial when ready. Connecting does not start motion. A physical job requires a validated drawing, operator confirmation, and all four setup checks in the app.
-- **Model export:** export the digital-twin robot as GLB for use in other 3D tools.
-- **Standalone AI portrait studio:** use the additional `svg gen` app for face-aware portrait framing, AI line-art generation, adjustable stroke filtering, and SVG cleanup.
+AIRA is the software behind that experience at the **RoboGenius Robotics Lab (ENSA Fès)**. It pairs a **3D digital twin** of the robot with a **local AI portrait studio**: the photo is cut out, turned into an AI line sketch, traced into plotter-ready SVG strokes, previewed on the virtual robot, and only then sent to the real one, after the operator has validated the drawing and completed four physical setup checks.
 
-## Choose a studio
+| Step | What happens | Where it runs |
+| --- | --- | --- |
+| **1 · Photo** | Upload a portrait or capture one from the camera | Browser |
+| **2 · Cutout** | MediaPipe removes the background | Browser |
+| **3 · AI sketch** | U²-Net Portrait Sketch (or ArtLine) draws a line portrait | Local Python service |
+| **4 · SVG** | The approved sketch is traced into pen strokes, then validated against the paper | Browser |
+| **5 · Digital twin** | The 3D Dobot plots the strokes so you can check reach, paper and pen | Browser (Three.js) |
+| **6 · Dobot** | The validated job is streamed to the robot over USB serial | Local Python service |
 
-| Studio | Entry point | Local address | Best for |
-|---|---|---|---|
-| Digital Twin & Plotter Studio | `Run-RoboGenius.ps1` | `http://127.0.0.1:8767/` | Dobot view, photo workflow, ArtLine/U²-Net comparison, SVG validation, and guarded hardware control |
-| AI Portrait-to-SVG Studio | `svg gen/server.py` | `http://127.0.0.1:8766/` | Portrait-focused local line art, face-aware crop, stroke tuning, and editing before plotting |
+> **Project status: experimental.** Start with the digital twin and a disconnected robot. Check the paper size, pen height, workspace clearance and the SVG before any physical job.
 
-The second studio is a separate app with its own HTML page and local API. It does not replace the main digital twin.
+## See it draw
+
+<p align="center"><img src="docs/readme/plot-zellige.jpg" alt="The Dobot digital twin has just finished plotting an eight-fold Moroccan zellige star on the paper" width="100%" /></p>
+<p align="center"><em>The built-in <b>ENSA Fès Moroccan zellige</b> preset, fully plotted by the digital twin: 754 points, joint angles and pen position updating live.</em></p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/readme/plot-spirograph.jpg" alt="A guilloché spirograph rose plotted on the paper by the virtual Dobot" /><p align="center"><b>Guilloché spirograph rose</b><br><sub>1,531 points of continuous curve.</sub></p></td>
+    <td width="50%"><img src="docs/readme/view-top-paper.jpg" alt="Top-down camera view of the paper showing the plotted zellige star" /><p align="center"><b>Top paper view</b><br><sub>Check placement inside the 130 × 130 mm sheet.</sub></p></td>
+  </tr>
+  <tr>
+    <td><img src="docs/readme/studio.jpg" alt="Main studio with camera views, the four-step AI Portrait Studio and the 2D paper preview" /><p align="center"><b>Studio tools</b><br><sub>Camera presets, the four-step portrait flow and the paper preview.</sub></p></td>
+    <td><img src="docs/readme/robot-controls.jpg" alt="Robot controls: Dobot connection, Cartesian inverse kinematics sliders and J1 to J4 joint sliders" /><p align="center"><b>Robot controls</b><br><sub>Serial connection, Cartesian IK and J1–J4 joint space.</sub></p></td>
+  </tr>
+  <tr>
+    <td><img src="docs/readme/view-cad.jpg" alt="CAD isometric camera view of the Dobot digital twin" /><p align="center"><b>CAD isometric view</b></p></td>
+    <td><img src="docs/readme/view-side-linkage.jpg" alt="Side view showing the Dobot's parallel linkage" /><p align="center"><b>Side linkage view</b><br><sub>Inspect the parallelogram arm that keeps the pen vertical.</sub></p></td>
+  </tr>
+</table>
+
+<sub>All screenshots are taken from the running app on a PC with no robot connected (<code>USB not connected</code>). The drawings are AIRA's built-in vector presets, so no personal photos appear here.</sub>
+
+## What works today
+
+| Capability | Implemented behavior | Current boundary |
+| --- | --- | --- |
+| **Photo input** | Upload an image or capture from a webcam | Camera needs browser permission on the local address |
+| **Background removal** | MediaPipe portrait segmentation in the browser | Works best on a centered, well-lit portrait |
+| **AI sketch** | U²-Net Portrait Sketch (LiteRT) locally; optional ArtLine model; compare both | Results depend on the photo; models are downloaded during setup |
+| **Sketch → SVG** | Trace the approved sketch, tune edge sensitivity/detail, preview and download | The sketch and the SVG are separate review steps, on purpose |
+| **SVG validation** | Checks that every path fits inside the paper before it can be drawn | Validation is required for any physical job |
+| **Digital twin** | GLB model of the Dobot, four camera presets, Cartesian IK, J1–J4 joints, live plot at 1×–12× | A simulation; verify the real setup before drawing |
+| **Vector presets** | Studio portrait study, guilloché spirograph rose, Moroccan zellige, calibration grid | Ready-made test drawings, no photo needed |
+| **Physical drawing** | Dobot Magician Classic over USB serial, job progress and stop | Connecting only reads the pose; drawing needs validation, confirmation and four checks |
+| **Model export** | Export the digital-twin robot as GLB | — |
+| **Standalone studio** | `svg gen/`: face-aware crop, ONNX line art, stroke filtering, SVG cleanup | Separate app on its own port and environment |
+
+## From photo to pen strokes
+
+```mermaid
+flowchart LR
+  A["📷 Photo<br/>upload or camera"] --> B["✂️ Cutout<br/>MediaPipe segmentation"]
+  B --> C["✏️ AI sketch<br/>U²-Net Portrait Sketch<br/>or ArtLine"]
+  C -->|"operator approves"| D["〰️ Trace to SVG<br/>edge + detail controls"]
+  D -->|"Validate SVG"| E["🧊 Digital twin<br/>3D plot preview"]
+  E -->|"4 checks + confirm"| F["🤖 Dobot Magician<br/>USB serial"]
+```
+
+Two human checkpoints are built into the flow: the operator **approves the AI sketch** before it becomes vectors, and **validates the SVG** before it can reach the robot.
+
+### The models
+
+| Task | Model | How it runs |
+| --- | --- | --- |
+| Portrait line sketch (default) | [U²-Net Portrait Sketch](https://huggingface.co/litert-community/U2Net-Portrait-Sketch-LiteRT) (~176 MB) | LiteRT in the project's `.venv`, via [`portrait_sketch_runner.py`](portrait_sketch_runner.py) |
+| Portrait line sketch (optional) | [ArtLine](https://github.com/vijishmadhavan/ArtLine) (~356 MB checkpoint) | Separate Python 3.8 environment, via [`artline_runner.py`](artline_runner.py) |
+| Background removal | MediaPipe segmentation | In the browser |
+| Standalone line art | [Informative Drawings ONNX](https://huggingface.co/rocca/informative-drawings-line-art-onnx) + `rembg` + [YuNet](https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet) | `svg gen/` server, CPU inference |
+
+## Architecture
+
+```mermaid
+flowchart TB
+  subgraph Browser["Browser · robogenius_dobot_magician_3d_digital_twin_studio.html"]
+    UI["Studio UI + SVG review"]
+    Twin["Three.js digital twin<br/>IK, joints, plot preview"]
+    Seg["MediaPipe segmentation<br/>built-in SVG tracer"]
+  end
+  subgraph Service["Local service · dobot_service.py · 127.0.0.1:8767"]
+    API["HTTP API"]
+    U2["U²-Net runner (.venv)"]
+    Art["ArtLine runner (.artline-venv, optional)"]
+    Link["Dobot serial bridge<br/>guarded job runner"]
+  end
+  UI --> API
+  API --> U2
+  API --> Art
+  API --> Link
+  Link -->|"USB serial"| Dobot["Dobot Magician Classic"]
+```
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /api/status`, `/api/artline/status`, `/api/portrait-sketch/status` | Service, model and robot status |
+| `POST /api/portrait-sketch`, `/api/artline` | Run a local sketch model on the cutout |
+| `POST /api/connect`, `/api/disconnect` | Open or close the serial link (connecting reads the pose only) |
+| `POST /api/draw` | Start a validated, confirmed job |
+| `POST /api/stop` | Stop the running job |
+
+The serial bridge speaks the Dobot binary protocol (`0xAA 0xAA`, length, payload, checksum) and rejects any frame whose checksum fails.
+
+## Safety by design
+
+A robot arm holding a pen is still a robot arm. The local service **refuses a drawing job** unless every condition below is true:
+
+| Guard | Enforced in |
+| --- | --- |
+| The SVG has been **validated** in the app | `dobot_service.py` → job rejected otherwise |
+| The operator has **explicitly confirmed** the job | `dobot_service.py` |
+| All four physical checks are done: **workspace**, **pen**, **clearance**, **operator present** | `dobot_service.py` |
+| Every path stays inside the **validated paper area** | `dobot_service.py` |
+| There is at least one path to draw | `dobot_service.py` |
+
+Also by design: both services listen on **loopback only** (this computer), connecting to the robot **does not start motion**, request bodies are size-limited, and photos are processed locally. Keep the work area clear, stay by the robot during motion, and use the physical stop if anything looks wrong.
 
 ## Run the main studio on Windows
 
@@ -32,49 +155,48 @@ The second studio is a separate app with its own HTML page and local API. It doe
 
 - Windows 10 or 11
 - Python 3.13 and the Python Launcher (`py`)
-- Internet access for Python packages, browser libraries, and model downloads
-- A Dobot Magician Classic and its USB/serial driver only if you intend to use physical drawing
+- Internet access for Python packages, browser libraries and model downloads
+- A Dobot Magician Classic and its USB/serial driver, **only** for physical drawing
 
-No robot is needed to explore the digital twin, upload a photo, or prepare an SVG.
+No robot is needed to explore the digital twin, plot the presets, upload a photo or prepare an SVG.
 
 ### Install and start
-
-From PowerShell in the project folder:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\Setup-Portrait-Sketch.ps1
 .\Run-RoboGenius.ps1
 ```
 
-The portrait setup creates `.venv` if needed, installs the app dependencies, and downloads the approximately 176 MB U²-Net model into `models/`. The run script starts the local service. Open the address it prints, normally **http://127.0.0.1:8767/**.
+The setup script creates `.venv`, installs the dependencies and downloads the ~176 MB U²-Net model into `models/`. The run script starts the local service; open the address it prints, normally **http://127.0.0.1:8767/**.
 
-The app loads Three.js, Tailwind, and MediaPipe components from CDNs, so the browser needs internet access when those assets are first loaded. Photo-processing requests stay on the local machine.
+The page loads Three.js, Tailwind and MediaPipe from CDNs, so the browser needs internet access the first time. Photo processing stays on the machine.
 
-### Portrait styles
+**Optional: ArtLine.** It uses a separate Python 3.8 environment and a ~356 MB checkpoint:
 
-- **U²-Net Portrait Sketch:** included as the practical local comparison style. Run `Setup-Portrait-Sketch.ps1` to install its LiteRT runtime and download the model. It appears as **U²-Net** in the sketch model picker.
-- **ArtLine:** optional legacy model. It uses a separate Python 3.8 environment and downloads a roughly 356 MB checkpoint. To install it, run:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Setup-ArtLine.ps1
+```
 
-  ```powershell
-  powershell -ExecutionPolicy Bypass -File .\Setup-ArtLine.ps1
-  ```
+Restart the main studio afterwards. Without ArtLine, U²-Net and the browser's built-in tracer remain available.
 
-  Restart the main studio afterwards. If ArtLine is unavailable, the browser's built-in tracer remains available.
+### Draw a portrait
 
-The image-to-SVG pipeline is photo-dependent. Use a well-lit, centered portrait and inspect the actual generated paths; neither model guarantees a clean result for every photo.
+1. Open **AI Portrait Studio** and upload or capture a photo.
+2. Review the cleaned cutout.
+3. Wait for the **AI Sketch**, then inspect it. Switch between U²-Net and ArtLine to compare styles.
+4. Click **Trace sketch to SVG** only when the sketch looks right. Adjust edge sensitivity/detail and trace again if needed.
+5. Review or download the paths, then **Validate SVG** when the paths and paper placement look right.
+6. Watch the digital twin plot it. Connect the Dobot only when ready, complete the four setup checks and confirm the job.
 
-### Use the photo-to-drawing workflow
+> The pipeline depends on the photo. Use a well-lit, centered portrait and inspect the generated paths; no model guarantees a clean result for every image.
 
-1. Open **AI Portrait Studio** and upload a photo or capture one.
-2. Review the cleaned subject after background removal.
-3. Wait for the **AI Sketch** step to finish. Inspect the generated image; switch between ArtLine and Portrait Sketch to compare styles. A progress indicator appears while the model is working.
-4. Click **Trace sketch to SVG** only after the sketch looks right. Adjust edge sensitivity/detail and trace again if needed.
-5. Review and download the vector paths. Select **Validate SVG** only after the paths and paper placement look right.
-6. Use the digital twin to check robot and paper alignment. Connect the physical Dobot only when you are ready, then complete all four setup checks and explicitly confirm the job.
+### Try it without a photo
+
+Open **Presets** (layers icon) and pick a drawing: the digital twin starts plotting it immediately. Set **Speed** to `12x (Instant)` for a quick preview.
 
 ## Run the standalone AI portrait-to-SVG studio
 
-This app has independent dependencies and a different image-to-SVG pipeline. Keep its environment separate from the main studio:
+`svg gen/` is a separate app with its own dependencies and pipeline. Keep its environment separate:
 
 ```powershell
 py -3.12 -m venv .svg-gen-venv
@@ -83,67 +205,44 @@ py -3.12 -m venv .svg-gen-venv
 .\.svg-gen-venv\Scripts\python.exe ".\svg gen\server.py"
 ```
 
-Open **http://127.0.0.1:8766/**. On first launch, the server downloads the ONNX portrait and face-detection models. The `svg gen/README.md` file documents its API, quality settings, and legacy command-line converter.
-
-To use another port:
-
-```powershell
-.\.svg-gen-venv\Scripts\python.exe ".\svg gen\server.py" --port 8770
-```
-
-Then open `http://127.0.0.1:8770/`.
-
-## How the main app is structured
-
-```text
-Browser
-  ├─ Three.js robot digital twin and SVG review UI
-  ├─ MediaPipe portrait segmentation and built-in SVG tracing
-  └─ Local HTTP service (127.0.0.1:8767)
-       ├─ ArtLine runner (.artline-venv, optional)
-       ├─ U²-Net Portrait Sketch runner (.venv)
-       └─ Dobot Magician serial bridge (only after operator connects)
-```
-
-The standalone app under `svg gen/` has its own HTTP server and ONNX-based line-art engine. It runs on `127.0.0.1:8766` by default.
+Open **http://127.0.0.1:8766/**. The first launch downloads the ONNX portrait and face-detection models. Use `--port 8770` to change the port. See [`svg gen/README.md`](svg%20gen/README.md) for its API and quality settings.
 
 ## Repository contents
 
 | Path | Purpose |
-|---|---|
-| `robogenius_dobot_magician_3d_digital_twin_studio.html` | Main Three.js digital-twin and drawing UI |
-| `dobot_service.py` | Loopback-only web service and guarded Dobot serial bridge |
-| `portrait_sketch_runner.py` | Local LiteRT inference for the U²-Net portrait model |
-| `artline_runner.py` | Optional ArtLine inference adapter |
-| `Setup-Portrait-Sketch.ps1`, `Setup-ArtLine.ps1` | Model/runtime installers |
-| `dobot_magician_classic_digital_twin.glb` | Robot model used by the project |
-| `svg gen/` | Standalone AI portrait-to-SVG studio and processing engine |
+| --- | --- |
+| [`robogenius_dobot_magician_3d_digital_twin_studio.html`](robogenius_dobot_magician_3d_digital_twin_studio.html) | Main Three.js digital twin and drawing UI |
+| [`dobot_service.py`](dobot_service.py) | Loopback-only web service and guarded Dobot serial bridge |
+| [`portrait_sketch_runner.py`](portrait_sketch_runner.py) | Local LiteRT inference for U²-Net Portrait Sketch |
+| [`artline_runner.py`](artline_runner.py) | Optional ArtLine inference adapter |
+| `Setup-Portrait-Sketch.ps1`, `Setup-ArtLine.ps1`, `Run-RoboGenius.ps1` | Installers and launcher |
+| `dobot_magician_classic_digital_twin.glb` | 3D robot model |
+| [`svg gen/`](svg%20gen) | Standalone AI portrait-to-SVG studio |
 | `RoboGenius_Dobot_AI_Portrait_Project_Dossier.pdf` | Project dossier |
+| `docs/readme/` | README screenshots |
 
-Downloaded weights and local Python environments are intentionally excluded from Git. The setup scripts and standalone server download the required model files when needed.
+Model weights and Python environments are excluded from Git; the setup scripts download them.
 
-## Configuration and troubleshooting
+## Troubleshooting
 
-- **Port 8767 is busy:** set a different port before starting the main service, for example `$env:ROBOGENIUS_PORT = '8771'`. Open the address printed by the service. The standalone studio accepts `--port` as shown above.
-- **Portrait Sketch is unavailable:** rerun `Setup-Portrait-Sketch.ps1`, confirm that the model download completed, then restart the main service.
-- **ArtLine is unavailable:** it is optional; install it with `Setup-ArtLine.ps1`. The first setup downloads its older Python runtime, dependencies, and model weights.
-- **Camera does not open:** use the local HTTP address, allow camera access in the browser, and check that another app is not using the camera.
-- **No Dobot port appears:** check the USB cable and the manufacturer's serial driver, then reconnect the robot. The app should report a disconnected state until you explicitly connect it.
-- **First run of the standalone studio is slow:** it may be downloading its ONNX models and initializing the CPU inference engine.
-
-## Safety and privacy
-
-- Both local services bind to loopback; they are intended for use on this computer.
-- Connecting to the Dobot reads its pose and does not start motion.
-- The service rejects drawing jobs unless the SVG is validated, the operator confirms the job, and all four physical setup checks are complete.
-- Keep the work area clear, check the paper/pen setup, and remain by the robot during movement. Use the physical stop control if motion is unexpected.
-- Photos are processed locally. Setup may download model assets from Hugging Face, Dropbox, and other upstream hosts; the photos themselves are not sent to those hosts.
+| Problem | Fix |
+| --- | --- |
+| Port 8767 is busy | `$env:ROBOGENIUS_PORT = '8771'` before starting, then open the printed address |
+| Portrait Sketch unavailable | Re-run `Setup-Portrait-Sketch.ps1`, confirm the model downloaded, restart the service |
+| ArtLine unavailable | It's optional; install with `Setup-ArtLine.ps1` |
+| Camera doesn't open | Use the local `http://127.0.0.1` address, allow camera access, close other apps using it |
+| No Dobot port listed | Check the USB cable and serial driver, reconnect the robot, press refresh |
+| Standalone studio slow on first run | It's downloading ONNX models and warming up CPU inference |
 
 ## Models and licensing
 
-- [U²-Net Portrait Sketch LiteRT](https://huggingface.co/litert-community/U2Net-Portrait-Sketch-LiteRT) — Apache-2.0 model card; downloaded by the setup script.
-- [ArtLine](https://github.com/vijishmadhavan/ArtLine) — upstream project is MIT licensed; its checkpoint is downloaded separately.
-- [Informative Drawings ONNX model](https://huggingface.co/rocca/informative-drawings-line-art-onnx) and [YuNet face detector](https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet) — downloaded by the standalone app when absent. Check upstream terms before redistribution or commercial use.
-- Python packages and browser libraries retain their own licenses.
+- [U²-Net Portrait Sketch LiteRT](https://huggingface.co/litert-community/U2Net-Portrait-Sketch-LiteRT): Apache-2.0 model card.
+- [ArtLine](https://github.com/vijishmadhavan/ArtLine): MIT upstream; checkpoint downloaded separately.
+- [Informative Drawings ONNX](https://huggingface.co/rocca/informative-drawings-line-art-onnx) and [YuNet](https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet): downloaded by the standalone app. Check upstream terms before redistribution or commercial use.
+- Python packages and browser libraries keep their own licenses.
 
-No top-level license has been selected for AIRA's original source code yet. Publishing this repository does not by itself grant a license to reuse that code.
+No license has been chosen yet for AIRA's own source code, so publishing the repository does not grant reuse rights.
+
+---
+
+<p align="center">Built at the <strong>RoboGenius Robotics Lab · ENSA Fès</strong> by <strong>Marwane Haddane</strong> · <a href="https://github.com/Marwane-Haddane">GitHub</a></p>
