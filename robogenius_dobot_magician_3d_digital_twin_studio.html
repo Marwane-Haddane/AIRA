@@ -146,6 +146,8 @@
     #studioRail button { width:44px; height:44px; border:1px solid transparent; border-radius:12px; color:#94a3b8; transition:.18s; }
     #studioRail button:hover, #studioRail button.active { color:#67e8f9; background:rgba(6,182,212,.12); border-color:rgba(34,211,238,.28); }
     #rightSidebar { position:absolute; z-index:35; top:0; right:0; bottom:0; width:min(340px,92vw); border-left:1px solid rgba(30,45,71,.9); box-shadow:-24px 0 50px rgba(0,0,0,.28); transition:transform .22s ease, opacity .22s ease; }
+    @keyframes railFlash { 0% { box-shadow:0 0 0 2px rgba(34,211,238,.8); } 100% { box-shadow:0 0 0 0 rgba(34,211,238,0); } }
+    .rail-flash { animation: railFlash 1.2s ease-out; border-radius: 12px; }
     #rightSidebar.drawer-closed { transform:translateX(105%); opacity:0; pointer-events:none; }
     #photoDock { position:absolute; z-index:25; left:18px; bottom:105px; width:min(400px,calc(100% - 36px)); max-height:66vh; overflow:auto; border:1px solid rgba(34,211,238,.32); border-radius:16px; background:rgba(8,15,27,.94); box-shadow:0 16px 44px rgba(0,0,0,.4); backdrop-filter:blur(14px); }
     #photoDockClose { position:sticky; top:0; z-index:5; display:flex; align-items:center; justify-content:space-between; padding:9px 12px; background:rgba(8,15,27,.98); border-bottom:1px solid rgba(30,45,71,.8); }
@@ -155,7 +157,7 @@
     #photoWorkflowCard #svgReviewPreview { max-height:220px; }
     #photoDock > #cameraViewCard { margin:12px 12px 0; }
     #photoDock > #paperPreviewCard { margin:12px 12px 12px; }
-    #photoDock > #archiveCard { margin:0 12px 12px; }
+    #archiveDrawer > #archiveCard { border:0; background:transparent; }
     #photoDock > #photoWorkflowCard { margin:12px 12px 0; padding:12px !important; }
 
     /* Four-stage portrait pipeline cards */
@@ -279,11 +281,12 @@
     <!-- LEFT SIDEBAR: NAVIGATION & WORKFLOW PIPELINE -->
     <aside id="leftSidebar" class="w-72 shrink-0 bg-rg-panel border-r border-rg-border flex flex-col justify-between z-20 overflow-y-auto">
       <nav id="studioRail" aria-label="Studio tools">
-        <button class="active" title="Photo to SVG" onclick="openPhotoDock()"><i class="fa-regular fa-image text-lg"></i></button>
-        <button title="Camera views" onclick="openCameraViews()"><i class="fa-solid fa-video text-lg"></i></button>
-        <button title="Presets" onclick="togglePresetDrawer()"><i class="fa-solid fa-layer-group text-lg"></i></button>
-        <button title="Teach points" onclick="openRobotDrawer(); switchLeftTab('teach')"><i class="fa-solid fa-route text-lg"></i></button>
-        <button title="Safety and calibration" onclick="openRobotDrawer(); switchLeftTab('safety')"><i class="fa-solid fa-shield-halved text-lg"></i></button>
+        <button id="railPhoto" class="active" title="Photo to SVG" onclick="openPhotoDock()"><i class="fa-regular fa-image text-lg"></i></button>
+        <button id="railCamera" title="Camera views" onclick="openCameraViews()"><i class="fa-solid fa-video text-lg"></i></button>
+        <button id="railPresets" title="Presets" onclick="togglePresetDrawer()"><i class="fa-solid fa-layer-group text-lg"></i></button>
+        <button id="railArchive" title="Archive: past photos, sketches and SVGs" onclick="toggleArchiveDrawer()"><i class="fa-solid fa-clock-rotate-left text-lg"></i></button>
+        <button id="railTeach" title="Teach points: record and replay robot poses" onclick="openRobotPanel('teach')"><i class="fa-solid fa-route text-lg"></i></button>
+        <button id="railSafety" title="Safety and calibration checklist" onclick="openRobotPanel('safety')"><i class="fa-solid fa-shield-halved text-lg"></i></button>
       </nav>
       <div id="leftSidebarContent" class="p-3.5 space-y-4">
         <!-- Navigation Tabs -->
@@ -605,6 +608,9 @@
           </div>
           <p class="text-[10px] text-slate-500 leading-relaxed">Jump the 3D camera to the angle you need. Camera presets never move the robot.</p>
         </div>
+      </section>
+      <section id="archiveDrawer" class="hidden absolute z-30 left-4 top-4 w-96 max-w-[calc(100%-2rem)] max-h-[calc(100%-7rem)] overflow-y-auto p-1 rounded-2xl border border-rg-border bg-rg-panel/95 shadow-2xl backdrop-blur" aria-label="Archive">
+        <div class="flex justify-end px-2 pt-1"><button onclick="toggleArchiveDrawer(false)" class="text-slate-400 hover:text-white" aria-label="Close archive">✕</button></div>
       </section>
       <section id="presetDrawer" class="hidden absolute z-30 left-4 top-4 w-80 max-w-[calc(100%-2rem)] p-3 rounded-2xl border border-rg-border bg-rg-panel/95 shadow-2xl backdrop-blur" aria-label="Drawing presets">
         <div class="flex items-center justify-between mb-2"><strong class="text-xs text-white">Drawing presets</strong><button onclick="togglePresetDrawer(false)" class="text-slate-400 hover:text-white" aria-label="Close presets">✕</button></div>
@@ -4178,6 +4184,8 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
     function openCameraViews() {
       document.getElementById('photoDock').classList.remove('hidden');
       document.getElementById('presetDrawer').classList.add('hidden');
+      document.getElementById('archiveDrawer').classList.add('hidden');
+      setRailActive('railCamera');
       document.getElementById('cameraViewCard').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
 
@@ -4206,16 +4214,46 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
       if (photo) document.getElementById('photoDock').appendChild(photo);
       if (paperPreview) document.getElementById('photoDock').appendChild(paperPreview);
       const archiveCard = document.getElementById('archiveCard');
-      if (archiveCard) document.getElementById('photoDock').appendChild(archiveCard);
+      if (archiveCard) document.getElementById('archiveDrawer').appendChild(archiveCard);
       if (presets && presetDrawer) presetDrawer.appendChild(presets);
       if (teach && robotContent) { teach.classList.remove('hidden'); robotContent.appendChild(teach); }
       if (safety && robotContent) { safety.classList.remove('hidden'); robotContent.appendChild(safety); }
       switchLeftTab('plotter');
     }
 
+    function setRailActive(id) {
+      document.querySelectorAll('#studioRail button').forEach((b) => b.classList.toggle('active', b.id === id));
+    }
+
+    function toggleArchiveDrawer(force) {
+      const drawer = document.getElementById('archiveDrawer');
+      const show = force === undefined ? drawer.classList.contains('hidden') : !!force;
+      drawer.classList.toggle('hidden', !show);
+      if (show) {
+        document.getElementById('photoDock').classList.add('hidden');
+        document.getElementById('presetDrawer').classList.add('hidden');
+        setRailActive('railArchive');
+        loadArchive();
+      }
+    }
+
+    // Teach and Safety live at the bottom of the robot drawer: show only the chosen one and scroll to it.
+    function openRobotPanel(tabKey) {
+      openRobotDrawer();
+      switchLeftTab(tabKey);
+      setRailActive(tabKey === 'teach' ? 'railTeach' : 'railSafety');
+      const panel = document.getElementById(`leftPanel-${tabKey}`);
+      if (panel) {
+        requestAnimationFrame(() => panel.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+        panel.classList.remove('rail-flash'); void panel.offsetWidth; panel.classList.add('rail-flash');
+      }
+    }
+
     function openPhotoDock() {
       document.getElementById('photoDock').classList.remove('hidden');
       document.getElementById('presetDrawer').classList.add('hidden');
+      document.getElementById('archiveDrawer').classList.add('hidden');
+      setRailActive('railPhoto');
       document.getElementById('photoWorkflowCard').scrollIntoView({ block: 'nearest' });
     }
 
@@ -4227,6 +4265,10 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
     function togglePresetDrawer(force) {
       const drawer = document.getElementById('presetDrawer');
       drawer.classList.toggle('hidden', force === undefined ? !drawer.classList.contains('hidden') : !force);
+      if (!drawer.classList.contains('hidden')) {
+        document.getElementById('archiveDrawer').classList.add('hidden');
+        setRailActive('railPresets');
+      }
     }
 
     function openRobotDrawer() { document.getElementById('rightSidebar').classList.remove('drawer-closed'); }
