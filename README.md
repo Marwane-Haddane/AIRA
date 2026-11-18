@@ -3,7 +3,8 @@
 </p>
 
 <p align="center">
-  <a href="#run-the-main-studio-on-windows"><img alt="Run locally on Windows" src="https://img.shields.io/badge/Run-locally%20on%20Windows-22D3EE?style=for-the-badge&amp;labelColor=0B1220"></a>
+  <a href="https://github.com/Marwane-Haddane/AIRA/releases/latest"><img alt="Download the Windows installer" src="https://img.shields.io/badge/Download-Windows%20installer-22D3EE?style=for-the-badge&amp;logo=windows&amp;labelColor=0B1220"></a>
+  <a href="#run-the-main-studio-on-windows"><img alt="Run from source" src="https://img.shields.io/badge/Run-from%20source-64748B?style=for-the-badge&amp;labelColor=0B1220"></a>
   <a href="#safety-by-design"><img alt="Guarded robot control" src="https://img.shields.io/badge/Robot%20control-guarded-10B981?style=for-the-badge&amp;labelColor=0B1220"></a>
 </p>
 <p align="center">
@@ -13,9 +14,11 @@
   <img alt="U2-Net Portrait Sketch on LiteRT" src="https://img.shields.io/badge/U%C2%B2--Net-LiteRT-FF6F00?logo=tensorflow&amp;logoColor=white">
   <img alt="ONNX Runtime" src="https://img.shields.io/badge/ONNX-line%20art-005CED?logo=onnx&amp;logoColor=white">
   <img alt="Dobot Magician Classic" src="https://img.shields.io/badge/Dobot-Magician%20Classic-1E293B">
-  <img alt="Local first" src="https://img.shields.io/badge/photos-stay%20on%20your%20PC-22C55E">
+  <img alt="Whisper offline voice" src="https://img.shields.io/badge/Whisper-offline%20voice-7C3AED">
+  <img alt="FLUX.2 AI Coloring" src="https://img.shields.io/badge/FLUX.2-AI%20Coloring-D946EF">
 </p>
 <p align="center">
+  <a href="#install-the-app">Install</a> ·
   <a href="#aira-in-one-minute">Overview</a> ·
   <a href="#see-it-draw">See it draw</a> ·
   <a href="#what-works-today">Features</a> ·
@@ -26,6 +29,16 @@
 </p>
 
 ---
+
+## Install the app
+
+**[⬇ Download AIRA-Setup.exe from the latest release](https://github.com/Marwane-Haddane/AIRA/releases/latest)** (Windows 10/11, 64-bit, ~500 MB)
+
+1. Run `AIRA-Setup-x.y.z.exe`. It installs for your user only (no admin rights) into `%LOCALAPPDATA%\Programs\AIRA` and adds a Start-menu entry and an optional desktop icon.
+2. Open **AIRA**. The studio opens in its own window, with no browser and no Python needed.
+3. For AI Coloring and Describe, click the **gear icon** (Settings) and paste your free Cloudflare account ID and Workers AI token ([how to get them](#create-draw-anything-write-text-use-your-voice)). Clean Line, Write text and voice work without a key.
+
+> Windows SmartScreen may warn about an unsigned app: choose **More info → Run anyway**. The first drawing and the first voice command take longer while the models load. The 3D view needs internet for its libraries. Uninstalling keeps your `.env` key and `archive/` drawings.
 
 ## AIRA in one minute
 
@@ -231,9 +244,12 @@ AIRA can run as a normal Windows app in its own window (Microsoft Edge WebView2,
 ```powershell
 .venv\Scripts\python.exe aira_desktop.py          # run it from the source folder
 powershell -ExecutionPolicy Bypass -File .\Build-Desktop.ps1   # build dist\AIRA\AIRA.exe
+powershell -ExecutionPolicy Bypass -File .\Build-Installer.ps1 -Version 1.0.0   # build the setup .exe
 ```
 
 `Build-Desktop.ps1` packages the studio, the Python service and the models into `dist\AIRA\` (zip that folder to share it). Open **Settings** (gear icon) to paste the Cloudflare key; it is saved next to the app in `.env`. The app still needs internet for the 3D libraries and for AI Coloring; Clean Line, Write text and voice work offline. ArtLine and U²-Net Portrait Sketch are not included in the desktop build.
+
+`Build-Installer.ps1` then wraps it into `installer\Output\AIRA-Setup-<version>.exe` with [Inno Setup 6](https://jrsoftware.org/isinfo.php) (`winget install JRSoftware.InnoSetup`); that is the file attached to each GitHub release.
 
 ### Draw a portrait
 
@@ -270,7 +286,7 @@ Open **http://127.0.0.1:8766/**. The first launch downloads the ONNX portrait an
 | [`robogenius_dobot_magician_3d_digital_twin_studio.html`](robogenius_dobot_magician_3d_digital_twin_studio.html) | Main Three.js digital twin and drawing UI |
 | [`dobot_service.py`](dobot_service.py) | Loopback-only web service and guarded Dobot serial bridge |
 | [`portrait_lineart/`](portrait_lineart) | Clean Line engine: face-aligned framing, face parsing, coloring-book line composition and the centerline vectorizer (`vectorize.py`); `cloud_ai.py` is the AI Coloring client; `create.py` is Describe, Write text, voice and settings; `archive.py` stores past runs |
-| [`aira_desktop.py`](aira_desktop.py), `Build-Desktop.ps1` | Desktop app window and its PyInstaller build |
+| [`aira_desktop.py`](aira_desktop.py), `Build-Desktop.ps1`, `Build-Installer.ps1`, [`installer/AIRA.iss`](installer/AIRA.iss) | Desktop app window, its PyInstaller build and the Windows installer |
 | [`portrait_sketch_runner.py`](portrait_sketch_runner.py) | Local LiteRT inference for U²-Net Portrait Sketch |
 | [`artline_runner.py`](artline_runner.py) | Optional ArtLine inference adapter |
 | `Setup-Clean-Line.ps1`, `Setup-Portrait-Sketch.ps1`, `Setup-ArtLine.ps1`, `Run-RoboGenius.ps1` | Installers and launcher |

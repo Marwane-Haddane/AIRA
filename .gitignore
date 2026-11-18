@@ -34,3 +34,6 @@ build/
 dist/
 *.spec
 .webview/
+
+# Installer output
+installer/Output/
