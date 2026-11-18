@@ -56,7 +56,7 @@ AIRA is the software behind that experience at the **RoboGenius Robotics Lab (EN
   </tr>
   <tr>
     <td><img src="docs/readme/studio.jpg" alt="Main studio with camera views, the four-step AI Portrait Studio and the 2D paper preview" /><p align="center"><b>Studio tools</b><br><sub>Camera presets, the four-step portrait flow and the paper preview.</sub></p></td>
-    <td><img src="docs/readme/robot-controls.jpg" alt="Robot controls: Dobot connection, Cartesian inverse kinematics sliders and J1 to J4 joint sliders" /><p align="center"><b>Robot controls</b><br><sub>Serial connection, Cartesian IK and J1–J4 joint space.</sub></p></td>
+    <td><img src="docs/readme/robot-controls.jpg" alt="Robot controls: Dobot connection, Cartesian inverse kinematics sliders and J1 to J3 joint sliders" /><p align="center"><b>Robot controls</b><br><sub>Serial connection, Cartesian IK and J1–J3 joint space.</sub></p></td>
   </tr>
   <tr>
     <td><img src="docs/readme/view-cad.jpg" alt="CAD isometric camera view of the Dobot digital twin" /><p align="center"><b>CAD isometric view</b></p></td>
@@ -96,7 +96,7 @@ AIRA is the software behind that experience at the **RoboGenius Robotics Lab (EN
 | **AI sketch** | U²-Net Portrait Sketch (LiteRT) locally; optional ArtLine model; compare both | Results depend on the photo; models are downloaded during setup |
 | **Sketch → SVG** | Trace the approved sketch, tune edge sensitivity/detail, preview and download | The sketch and the SVG are separate review steps, on purpose |
 | **SVG validation** | Checks that every path fits inside the paper before it can be drawn | Validation is required for any physical job |
-| **Digital twin** | GLB model of the Dobot, four camera presets, Cartesian IK, J1–J4 joints, live plot at 1×–12× | A simulation; verify the real setup before drawing |
+| **Digital twin** | GLB model of the Dobot, four camera presets, Cartesian IK, J1–J3 joints, live plot at 1×–12× | A simulation; verify the real setup before drawing |
 | **Vector presets** | Studio portrait study, guilloché spirograph rose, Moroccan zellige, calibration grid | Ready-made test drawings, no photo needed |
 | **Physical drawing** | Dobot Magician Classic over USB serial, job progress and stop | Connecting only reads the pose; drawing needs validation, confirmation and four checks |
 | **Model export** | Export the digital-twin robot as GLB | — |
