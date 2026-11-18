@@ -87,6 +87,27 @@ AIRA is the software behind that experience at the **RoboGenius Robotics Lab (EN
   </tr>
 </table>
 
+## Create: draw anything, write text, use your voice
+
+The **Create** panel (magic-wand icon) draws more than faces:
+
+- **Describe**: type or say *"a small house with a tree and a sun"* or *"a cat next to a flower pot"*. AI Coloring makes a coloring page from the words and it is traced into pen strokes.
+- **Write text**: single-line plotter fonts (Script, Handwriting, Simple, Serif, Gothic…). The pen draws each letter once, like handwriting, instead of tracing letter outlines.
+- **Voice**: the microphone button uses **Whisper base**, running offline on the computer (Arabic, French, English and ~100 other languages). In Describe mode the speech is translated to English for the AI.
+
+<table>
+  <tr>
+    <td width="42%"><img src="docs/readme/create-describe.jpg" alt="Create panel: the description 'a small house with a tree and a sun' turned into a line drawing ready to plot" /><p align="center"><b>Describe</b><br><sub>Words → coloring page → 40 pen strokes in 7 s.</sub></p></td>
+    <td width="58%"><img src="docs/readme/text-fonts.jpg" alt="'Hello AIRA' written in four single-line plotter fonts: script, simple, gothic and handwriting" /><p align="center"><b>Write text</b><br><sub>Single-line fonts the pen draws in one pass per stroke.</sub></p><img src="docs/readme/settings.jpg" alt="Settings panel with the Cloudflare account ID and API token fields and the offline Whisper voice status" width="70%" /><p align="center"><b>Settings</b><br><sub>Paste the Cloudflare key in the app; it is stored only in the local <code>.env</code>.</sub></p></td>
+  </tr>
+</table>
+
+### How AIRA knows what it is looking at
+
+- **Photo**: AIRA looks for a face. With a face it draws a head-and-shoulders portrait; with no face (a place, a house, an animal, an object) it asks the AI for a coloring page of *the same scene*, so nothing is turned into a person.
+- **Describe**: you say what to draw, so there is nothing to guess.
+- **Write text**: no AI at all; the letters come straight from the font.
+
 ## What works today
 
 | Capability | Implemented behavior | Current boundary |
@@ -203,6 +224,17 @@ powershell -ExecutionPolicy Bypass -File .\Setup-ArtLine.ps1
 
 Restart the main studio afterwards. Without ArtLine, U²-Net and the browser's built-in tracer remain available.
 
+### Desktop app (no browser)
+
+AIRA can run as a normal Windows app in its own window (Microsoft Edge WebView2, built into Windows 10/11):
+
+```powershell
+.venv\Scripts\python.exe aira_desktop.py          # run it from the source folder
+powershell -ExecutionPolicy Bypass -File .\Build-Desktop.ps1   # build dist\AIRA\AIRA.exe
+```
+
+`Build-Desktop.ps1` packages the studio, the Python service and the models into `dist\AIRA\` (zip that folder to share it). Open **Settings** (gear icon) to paste the Cloudflare key; it is saved next to the app in `.env`. The app still needs internet for the 3D libraries and for AI Coloring; Clean Line, Write text and voice work offline. ArtLine and U²-Net Portrait Sketch are not included in the desktop build.
+
 ### Draw a portrait
 
 1. Open **AI Portrait Studio** and upload or capture a photo.
@@ -237,7 +269,8 @@ Open **http://127.0.0.1:8766/**. The first launch downloads the ONNX portrait an
 | --- | --- |
 | [`robogenius_dobot_magician_3d_digital_twin_studio.html`](robogenius_dobot_magician_3d_digital_twin_studio.html) | Main Three.js digital twin and drawing UI |
 | [`dobot_service.py`](dobot_service.py) | Loopback-only web service and guarded Dobot serial bridge |
-| [`portrait_lineart/`](portrait_lineart) | Clean Line engine: face-aligned framing, face parsing, coloring-book line composition and the centerline vectorizer (`vectorize.py`); `cloud_ai.py` is the AI Coloring client |
+| [`portrait_lineart/`](portrait_lineart) | Clean Line engine: face-aligned framing, face parsing, coloring-book line composition and the centerline vectorizer (`vectorize.py`); `cloud_ai.py` is the AI Coloring client; `create.py` is Describe, Write text, voice and settings; `archive.py` stores past runs |
+| [`aira_desktop.py`](aira_desktop.py), `Build-Desktop.ps1` | Desktop app window and its PyInstaller build |
 | [`portrait_sketch_runner.py`](portrait_sketch_runner.py) | Local LiteRT inference for U²-Net Portrait Sketch |
 | [`artline_runner.py`](artline_runner.py) | Optional ArtLine inference adapter |
 | `Setup-Clean-Line.ps1`, `Setup-Portrait-Sketch.ps1`, `Setup-ArtLine.ps1`, `Run-RoboGenius.ps1` | Installers and launcher |
@@ -257,6 +290,8 @@ Model weights and Python environments are excluded from Git; the setup scripts d
 | Clean Line unavailable or very sparse | Re-run `Setup-Clean-Line.ps1` (face parsing is what draws hairline, jaw, eyes and lips), restart the service |
 | Portrait Sketch unavailable | Re-run `Setup-Portrait-Sketch.ps1`, confirm the model downloaded, restart the service |
 | ArtLine unavailable | It's optional; install with `Setup-ArtLine.ps1` |
+| Microphone doesn't work | Allow microphone access when asked; in Settings check that *Voice · Whisper base* says *Ready*, otherwise re-run `Setup-Clean-Line.ps1` |
+| Write text shows nothing for Arabic | The single-line fonts cover Latin, Greek and Cyrillic; use Describe for Arabic words |
 | Camera doesn't open | Use the local `http://127.0.0.1` address, allow camera access, close other apps using it |
 | No Dobot port listed | Check the USB cable and serial driver, reconnect the robot, press refresh |
 | Standalone studio slow on first run | It's downloading ONNX models and warming up CPU inference |
@@ -267,7 +302,10 @@ Model weights and Python environments are excluded from Git; the setup scripts d
 - [ArtLine](https://github.com/vijishmadhavan/ArtLine): MIT upstream; checkpoint downloaded separately.
 - [Informative Drawings ONNX](https://huggingface.co/rocca/informative-drawings-line-art-onnx) and [YuNet](https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet): downloaded by the standalone app. Check upstream terms before redistribution or commercial use.
 - [BiSeNet face parsing ONNX](https://github.com/yakhyo/face-parsing) (Clean Line): MIT code; the weights are trained on CelebAMask-HQ, whose terms are non-commercial research and education only.
-- [rembg `u2net_human_seg`](https://github.com/danielgatis/rembg) (Clean Line matte): downloaded by `Setup-Clean-Line.ps1`.
+- [U²-Net human segmentation](https://github.com/xuebinqin/U-2-Net) (person matte, Apache-2.0), the ONNX export published by [rembg](https://github.com/danielgatis/rembg): downloaded by `Setup-Clean-Line.ps1` and run directly on onnxruntime.
+- [FLUX.2 [klein] 4B](https://developers.cloudflare.com/workers-ai/models/flux-2-klein-4b/) on Cloudflare Workers AI (AI Coloring, Describe): used through your own Cloudflare account under Cloudflare's and Black Forest Labs' terms.
+- [Whisper base](https://huggingface.co/Systran/faster-whisper-base) via [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (voice): MIT.
+- [Hershey fonts](https://github.com/apshu/HersheyFonts) (Write text): MIT package; the Hershey font data is public domain.
 - Python packages and browser libraries keep their own licenses.
 
 No license has been chosen yet for AIRA's own source code, so publishing the repository does not grant reuse rights.

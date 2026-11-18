@@ -87,6 +87,22 @@ def run(body: Dict[str, Any]) -> Dict[str, Any]:
     return resp
 
 
+def create(kind: str, body: Dict[str, Any]) -> Dict[str, Any]:
+    """Create mode: 'describe' (AI page from words) or 'text' (plotter font)."""
+    from . import create as cr
+    if kind == "describe":
+        with _LOCK:
+            out = cr.describe(str(body.get("prompt", "")))
+    elif kind == "text":
+        out = cr.write_text(str(body.get("text", "")), str(body.get("font", "futural")))
+    else:
+        raise ValueError("Unknown create mode")
+    secs = out["info"]["timings"]["total"]
+    resp = _respond(out["strokes"], out["size"], out["line_image"], out["info"], secs)
+    resp["archive_id"] = _archive(None, out["line_image"], out["page"], out["strokes"], out["size"], out["info"], secs)
+    return resp
+
+
 def _archive(source, line_image, page, strokes, size, info, secs):
     from .archive import save
     return save(source, line_image, page, strokes, size, info, secs)

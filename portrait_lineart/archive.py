@@ -30,7 +30,7 @@ def _save_png(arr: np.ndarray, path: Path) -> None:
     Image.fromarray(arr).save(path, format="PNG", optimize=True)
 
 
-def save(source: bytes, line_image: np.ndarray, page: Optional[np.ndarray], raw_strokes, size: int,
+def save(source: Optional[bytes], line_image: np.ndarray, page: Optional[np.ndarray], raw_strokes, size: int,
          info: Dict[str, Any], seconds: float) -> Optional[str]:
     """Store one run; never raises (the archive must not break drawing)."""
     try:
@@ -40,9 +40,10 @@ def save(source: bytes, line_image: np.ndarray, page: Optional[np.ndarray], raw_
         run_id = f"{now:%Y%m%d-%H%M%S}-{uuid.uuid4().hex[:6]}"
         folder = ARCHIVE / run_id
         folder.mkdir(parents=True, exist_ok=True)
-        img = Image.open(io.BytesIO(source)).convert("RGB")
-        img.thumbnail((1024, 1024))
-        img.save(folder / "input.jpg", format="JPEG", quality=88)
+        if source:
+            img = Image.open(io.BytesIO(source)).convert("RGB")
+            img.thumbnail((1024, 1024))
+            img.save(folder / "input.jpg", format="JPEG", quality=88)
         _save_png(line_image, folder / "sketch.png")
         if page is not None:
             _save_png(page, folder / "page.png")
@@ -53,6 +54,7 @@ def save(source: bytes, line_image: np.ndarray, page: Optional[np.ndarray], raw_
             "created": now.isoformat(timespec="seconds"),
             "engine": info.get("engine", "clean"),
             "subject": info.get("subject"),
+            "font": info.get("font_label"),
             "model": info.get("model"),
             "ai_error": info.get("ai_error"),
             "stroke_count": int(info.get("stroke_count") or len(raw_strokes)),

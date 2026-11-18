@@ -333,6 +333,10 @@ class RoboGeniusHandler(BaseHTTPRequestHandler):
             from portrait_lineart import service as clean_line
             self._json(200, clean_line.status())
             return
+        if route == "/api/settings":
+            from portrait_lineart import create
+            self._json(200, {"ok": True, **create.settings_status()})
+            return
         if route == "/api/archive":
             from portrait_lineart import archive
             self._json(200, {"ok": True, "runs": archive.list_runs()})
@@ -402,6 +406,20 @@ class RoboGeniusHandler(BaseHTTPRequestHandler):
             elif route == "/api/clean-line":
                 from portrait_lineart import service as clean_line
                 self._json(200, clean_line.run(body))
+            elif route == "/api/settings":
+                from portrait_lineart import create
+                self._json(200, {"ok": True, **create.save_settings(body)})
+            elif route in ("/api/create/describe", "/api/create/text"):
+                from portrait_lineart import service as clean_line
+                from portrait_lineart.cloud_ai import CloudAIError
+                try:
+                    self._json(200, clean_line.create(route.rsplit("/", 1)[1], body))
+                except CloudAIError as exc:
+                    self._json(503, {"ok": False, "error": str(exc)})
+            elif route == "/api/voice":
+                from portrait_lineart import create
+                self._json(200, create.transcribe(str(body.get("audio", "")), str(body.get("task", "transcribe")),
+                                                  body.get("language") or None))
             elif route == "/api/archive/delete":
                 from portrait_lineart import archive
                 self._json(200, {"ok": archive.delete(str(body.get("id", "")))})

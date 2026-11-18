@@ -150,6 +150,10 @@
     #studioRail button i { transition: transform .45s cubic-bezier(.34,1.56,.64,1); }
     #studioRail button:hover { transform: translateX(2px); box-shadow: 0 0 16px rgba(34,211,238,.22); }
     #studioRail button:hover i { transform: rotate(-14deg) scale(1.2); }
+    #studioRail #railSettings:hover i { transform: rotate(120deg) scale(1.15); }
+    #studioRail #railCreate:hover i { transform: rotate(-20deg) scale(1.25); }
+    .create-tab.active { color:#67e8f9; border-color:rgba(34,211,238,.7); background:rgba(6,182,212,.12); }
+    .mic-btn.recording { color:#fecdd3; background:rgba(244,63,94,.25); border-color:rgba(244,63,94,.6); animation: railPulse 1s ease-in-out infinite; }
     #studioRail #railArchive:hover i { transform: rotate(-360deg) scale(1.15); }
     #studioRail #railPresets:hover i { transform: translateY(-2px) scale(1.2); }
     #studioRail #railSafety:hover i { animation: railPulse .6s ease-in-out; }
@@ -292,11 +296,13 @@
     <aside id="leftSidebar" class="w-72 shrink-0 bg-rg-panel border-r border-rg-border flex flex-col justify-between z-20 overflow-y-auto">
       <nav id="studioRail" aria-label="Studio tools">
         <button id="railPhoto" class="active" title="Photo to SVG" onclick="openPhotoDock()"><i class="fa-regular fa-image text-lg"></i></button>
+        <button id="railCreate" title="Create: draw anything from words, write text, use your voice" onclick="toggleCreateDrawer()"><i class="fa-solid fa-wand-magic-sparkles text-lg"></i></button>
         <button id="railCamera" title="Camera views" onclick="openCameraViews()"><i class="fa-solid fa-video text-lg"></i></button>
         <button id="railPresets" title="Presets" onclick="togglePresetDrawer()"><i class="fa-solid fa-layer-group text-lg"></i></button>
         <button id="railArchive" title="Archive: past photos, sketches and SVGs" onclick="toggleArchiveDrawer()"><i class="fa-solid fa-clock-rotate-left text-lg"></i></button>
         <button id="railTeach" title="Teach points: record and replay robot poses" onclick="openRobotPanel('teach')"><i class="fa-solid fa-route text-lg"></i></button>
         <button id="railSafety" title="Safety and calibration checklist" onclick="openRobotPanel('safety')"><i class="fa-solid fa-shield-halved text-lg"></i></button>
+        <button id="railSettings" title="Settings: AI key and voice" onclick="toggleSettingsDrawer()"><i class="fa-solid fa-gear text-lg"></i></button>
       </nav>
       <div id="leftSidebarContent" class="p-3.5 space-y-4">
         <!-- Navigation Tabs -->
@@ -617,6 +623,62 @@
             </button>
           </div>
           <p class="text-[10px] text-slate-500 leading-relaxed">Jump the 3D camera to the angle you need. Camera presets never move the robot.</p>
+        </div>
+      </section>
+      <section id="createDrawer" class="hidden absolute z-30 left-4 top-4 w-96 max-w-[calc(100%-2rem)] max-h-[calc(100%-7rem)] overflow-y-auto p-3 rounded-2xl border border-rg-border bg-rg-panel/95 shadow-2xl backdrop-blur space-y-2.5" aria-label="Create">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-white flex items-center gap-1.5"><i class="fa-solid fa-wand-magic-sparkles text-fuchsia-300"></i> Create</span>
+          <button onclick="toggleCreateDrawer(false)" class="text-slate-400 hover:text-white" aria-label="Close create">✕</button>
+        </div>
+        <div class="grid grid-cols-2 gap-1.5">
+          <button id="createTab-describe" type="button" onclick="setCreateTab('describe')" class="create-tab active py-1.5 rounded-md border border-rg-border text-[11px] font-semibold text-slate-300"><i class="fa-solid fa-paw mr-1"></i>Describe</button>
+          <button id="createTab-text" type="button" onclick="setCreateTab('text')" class="create-tab py-1.5 rounded-md border border-rg-border text-[11px] font-semibold text-slate-300"><i class="fa-solid fa-font mr-1"></i>Write text</button>
+        </div>
+        <div id="createPanel-describe" class="space-y-2">
+          <p class="text-[10px] text-slate-400">Say or type what to draw: a house, a cat, a car, a flower… AI Coloring turns it into a coloring page.</p>
+          <div class="flex gap-1.5">
+            <textarea id="describeInput" rows="2" maxlength="300" placeholder="a cute cat sitting next to a plant" class="flex-1 min-w-0 bg-rg-bg border border-rg-border rounded-md px-2 py-1.5 text-xs text-white resize-none"></textarea>
+            <button type="button" id="micDescribe" onclick="toggleVoice('describe')" class="mic-btn w-9 shrink-0 rounded-md border border-rg-border bg-rg-bg text-slate-300 hover:text-white" title="Speak (Whisper, offline)"><i class="fa-solid fa-microphone"></i></button>
+          </div>
+          <button type="button" id="describeButton" onclick="runCreate('describe')" class="w-full py-1.5 rounded-md bg-fuchsia-500/15 hover:bg-fuchsia-500/25 text-fuchsia-200 border border-fuchsia-500/30 text-xs font-semibold"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Generate drawing</button>
+        </div>
+        <div id="createPanel-text" class="hidden space-y-2">
+          <p class="text-[10px] text-slate-400">Single-line plotter fonts: the pen draws each letter once, like handwriting.</p>
+          <div class="flex gap-1.5">
+            <textarea id="textInput" rows="2" maxlength="240" placeholder="Hello from AIRA" class="flex-1 min-w-0 bg-rg-bg border border-rg-border rounded-md px-2 py-1.5 text-xs text-white resize-none"></textarea>
+            <button type="button" id="micText" onclick="toggleVoice('text')" class="mic-btn w-9 shrink-0 rounded-md border border-rg-border bg-rg-bg text-slate-300 hover:text-white" title="Speak (Whisper, offline)"><i class="fa-solid fa-microphone"></i></button>
+          </div>
+          <select id="fontSelect" class="w-full bg-rg-bg border border-rg-border rounded-md px-2 py-1.5 text-xs text-white"></select>
+          <button type="button" id="textButton" onclick="runCreate('text')" class="w-full py-1.5 rounded-md bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-200 border border-cyan-500/30 text-xs font-semibold"><i class="fa-solid fa-pen-nib mr-1"></i>Write it</button>
+        </div>
+        <p id="createStatus" class="text-[10px] text-slate-400 min-h-[1em]"></p>
+        <div id="createResult" class="hidden space-y-2">
+          <div class="rounded-md bg-white border border-slate-700 overflow-hidden"><svg id="createPreview" viewBox="0 0 512 512" class="w-full h-auto block" xmlns="http://www.w3.org/2000/svg"></svg></div>
+          <div class="grid grid-cols-2 gap-1.5">
+            <button type="button" onclick="downloadCreated()" class="py-1.5 rounded-md bg-slate-800 text-slate-300 text-xs"><i class="fa-solid fa-download mr-1"></i>Download SVG</button>
+            <button type="button" onclick="plotCreated()" class="py-1.5 rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-xs font-semibold"><i class="fa-solid fa-check mr-1"></i>Validate &amp; plot</button>
+          </div>
+        </div>
+      </section>
+      <section id="settingsDrawer" class="hidden absolute z-30 left-4 top-4 w-96 max-w-[calc(100%-2rem)] max-h-[calc(100%-7rem)] overflow-y-auto p-3 rounded-2xl border border-rg-border bg-rg-panel/95 shadow-2xl backdrop-blur space-y-3" aria-label="Settings">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-white flex items-center gap-1.5"><i class="fa-solid fa-gear text-slate-300"></i> Settings</span>
+          <button onclick="toggleSettingsDrawer(false)" class="text-slate-400 hover:text-white" aria-label="Close settings">✕</button>
+        </div>
+        <div class="space-y-2 rounded-lg border border-rg-border bg-rg-bg p-2.5">
+          <div class="flex items-center justify-between"><span class="text-[11px] font-semibold text-white">AI Coloring · Cloudflare</span><span id="settingsAiState" class="text-[10px] text-slate-400">…</span></div>
+          <p class="text-[10px] text-slate-500 leading-relaxed">Free Workers AI tier: about 90 drawings a day. Create a token from the <b>Workers AI</b> template in the Cloudflare dashboard. Keys are saved only in the local <code>.env</code> file.</p>
+          <label class="block text-[10px] text-slate-400">Account ID<input id="settingsAccount" autocomplete="off" spellcheck="false" class="mt-1 w-full bg-rg-panel border border-rg-border rounded px-2 py-1.5 text-xs text-white font-mono" /></label>
+          <label class="block text-[10px] text-slate-400">API token<input id="settingsToken" type="password" autocomplete="new-password" spellcheck="false" class="mt-1 w-full bg-rg-panel border border-rg-border rounded px-2 py-1.5 text-xs text-white font-mono" /></label>
+          <div class="flex gap-1.5">
+            <button type="button" onclick="saveSettings()" class="flex-1 py-1.5 rounded-md bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 text-xs font-semibold"><i class="fa-solid fa-floppy-disk mr-1"></i>Save</button>
+            <button type="button" onclick="saveSettings(true)" class="px-3 py-1.5 rounded-md bg-slate-800 text-rose-300 text-xs" title="Remove the saved key">Clear</button>
+          </div>
+          <p id="settingsMessage" class="text-[10px] text-slate-400 min-h-[1em]"></p>
+        </div>
+        <div class="space-y-1 rounded-lg border border-rg-border bg-rg-bg p-2.5">
+          <div class="flex items-center justify-between"><span class="text-[11px] font-semibold text-white">Voice · Whisper base</span><span id="settingsVoiceState" class="text-[10px] text-slate-400">…</span></div>
+          <p class="text-[10px] text-slate-500 leading-relaxed">Speech is recognized offline on this computer (Arabic, French, English and ~100 more languages). In Describe mode it is translated to English for the AI.</p>
         </div>
       </section>
       <section id="cameraDrawer" class="hidden absolute z-30 left-4 top-4 w-96 max-w-[calc(100%-2rem)] p-1 rounded-2xl border border-rg-border bg-rg-panel/95 shadow-2xl backdrop-blur" aria-label="Camera views">
@@ -3095,7 +3157,7 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
       };
     }
 
-    const ARCHIVE_ENGINE_LABEL = { ai: 'AI Coloring', clean: 'Clean Line' };
+    const ARCHIVE_ENGINE_LABEL = { ai: 'AI Coloring', clean: 'Clean Line', describe: 'Describe', text: 'Text' };
 
     async function loadArchive() {
       const list = document.getElementById('archiveList');
@@ -3121,7 +3183,7 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
             a.appendChild(img);
             return a;
           };
-          row.appendChild(thumb('input.jpg', 'Input photo'));
+          if ((run.files || []).includes('input.jpg')) row.appendChild(thumb('input.jpg', 'Input photo'));
           if ((run.files || []).includes('page.png')) row.appendChild(thumb('page.png', 'AI coloring page'));
           row.appendChild(thumb('drawing.svg', 'Plotter SVG'));
           const meta = document.createElement('div');
@@ -3129,7 +3191,8 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
           const when = new Date(run.created);
           const title = document.createElement('div');
           title.className = 'text-slate-200 font-semibold truncate';
-          title.textContent = `${ARCHIVE_ENGINE_LABEL[run.engine] || run.engine}${run.subject && run.subject !== 'portrait' ? ' · ' + run.subject : ''}`;
+          title.textContent = `${ARCHIVE_ENGINE_LABEL[run.engine] || run.engine}${run.subject && run.subject !== 'portrait' ? ' · ' + run.subject : ''}${run.font ? ' · ' + run.font : ''}`;
+          title.title = title.textContent;
           const time = document.createElement('div');
           time.className = 'text-slate-400 font-mono';
           time.textContent = isNaN(when) ? run.created : when.toLocaleString();
@@ -4188,6 +4251,7 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
       if (show) {
         ['photoDock', 'presetDrawer', 'archiveDrawer'].forEach((id) => document.getElementById(id).classList.add('hidden'));
         setRailActive('railCamera');
+        hideExtraDrawers();
       }
     }
 
@@ -4225,6 +4289,188 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
       switchLeftTab('plotter');
     }
 
+    // ---------- Create (describe / text) + voice + settings ----------
+    let createTab = 'describe';
+    let createdStrokes = null;
+    let createdName = 'drawing';
+    let voiceRecorder = null;
+
+    function hideExtraDrawers(keep) {
+      ['createDrawer', 'settingsDrawer'].forEach((id) => { if (id !== keep) document.getElementById(id).classList.add('hidden'); });
+    }
+
+    function hideMainDrawers() {
+      ['photoDock', 'presetDrawer', 'archiveDrawer', 'cameraDrawer'].forEach((id) => document.getElementById(id).classList.add('hidden'));
+    }
+
+    function toggleCreateDrawer(force) {
+      const drawer = document.getElementById('createDrawer');
+      const show = force === undefined ? drawer.classList.contains('hidden') : !!force;
+      drawer.classList.toggle('hidden', !show);
+      if (show) { hideMainDrawers(); hideExtraDrawers('createDrawer'); setRailActive('railCreate'); loadSettings(); }
+    }
+
+    function toggleSettingsDrawer(force) {
+      const drawer = document.getElementById('settingsDrawer');
+      const show = force === undefined ? drawer.classList.contains('hidden') : !!force;
+      drawer.classList.toggle('hidden', !show);
+      if (show) { hideMainDrawers(); hideExtraDrawers('settingsDrawer'); setRailActive('railSettings'); loadSettings(); }
+    }
+
+    function setCreateTab(tab) {
+      createTab = tab;
+      ['describe', 'text'].forEach((t) => {
+        document.getElementById(`createTab-${t}`).classList.toggle('active', t === tab);
+        document.getElementById(`createPanel-${t}`).classList.toggle('hidden', t !== tab);
+      });
+    }
+
+    async function loadSettings() {
+      if (!robotServiceBase) return;
+      try {
+        const st = await fetch(`${robotServiceBase}/api/settings`, { cache: 'no-store' }).then((r) => r.json());
+        const cf = st.cloudflare || {};
+        const ai = document.getElementById('settingsAiState');
+        ai.textContent = cf.configured ? `Connected · token ${cf.token_hint}` : 'Not set up';
+        ai.className = `text-[10px] ${cf.configured ? 'text-emerald-300' : 'text-amber-300'}`;
+        document.getElementById('settingsAccount').placeholder = cf.account_hint ? `saved (${cf.account_hint})` : 'your Cloudflare account ID';
+        document.getElementById('settingsToken').placeholder = cf.token_hint ? `saved (${cf.token_hint}) · paste to replace` : 'paste your Workers AI token';
+        const w = st.whisper || {};
+        const vs = document.getElementById('settingsVoiceState');
+        vs.textContent = w.available ? 'Ready (offline)' : 'Not installed';
+        vs.className = `text-[10px] ${w.available ? 'text-emerald-300' : 'text-amber-300'}`;
+        const select = document.getElementById('fontSelect');
+        if (!select.options.length && st.fonts) {
+          Object.entries(st.fonts).forEach(([id, label]) => select.add(new Option(label, id)));
+          select.value = 'scripts';
+        }
+      } catch (error) { /* local app not running */ }
+    }
+
+    async function saveSettings(clear = false) {
+      const msg = document.getElementById('settingsMessage');
+      const body = clear ? { clear: true } : {
+        account_id: document.getElementById('settingsAccount').value.trim(),
+        api_token: document.getElementById('settingsToken').value.trim()
+      };
+      if (clear && !confirm('Remove the saved Cloudflare key from this computer?')) return;
+      try {
+        const res = await fetch(`${robotServiceBase}/api/settings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Could not save');
+        document.getElementById('settingsAccount').value = '';
+        document.getElementById('settingsToken').value = '';
+        msg.textContent = clear ? 'Key removed.' : 'Saved. AI Coloring and Describe use it right away.';
+        loadSettings();
+      } catch (error) { msg.textContent = error.message; }
+    }
+
+    async function toggleVoice(target) {
+      const btn = document.getElementById(target === 'describe' ? 'micDescribe' : 'micText');
+      const status = document.getElementById('createStatus');
+      if (voiceRecorder && voiceRecorder.state === 'recording') { voiceRecorder.stop(); return; }
+      if (!robotServiceBase) { status.textContent = 'Voice needs the local app.'; return; }
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (error) {
+        status.textContent = 'Microphone blocked: allow microphone access for this page.';
+        return;
+      }
+      const chunks = [];
+      voiceRecorder = new MediaRecorder(stream);
+      voiceRecorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+      voiceRecorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        btn.classList.remove('recording');
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+        status.textContent = 'Recognizing speech (offline)…';
+        try {
+          const blob = new Blob(chunks, { type: voiceRecorder.mimeType || 'audio/webm' });
+          const audio = await new Promise((resolve) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.readAsDataURL(blob); });
+          const res = await fetch(`${robotServiceBase}/api/voice`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ audio, task: target === 'describe' ? 'translate' : 'transcribe' })
+          });
+          const data = await res.json();
+          if (!res.ok || !data.ok) throw new Error(data.error || 'Speech recognition failed');
+          if (!data.text) throw new Error('No speech heard. Try again closer to the microphone.');
+          document.getElementById(target === 'describe' ? 'describeInput' : 'textInput').value = data.text;
+          status.textContent = `Heard (${data.language}, ${data.seconds}s): “${data.text}”`;
+        } catch (error) {
+          status.textContent = error.message;
+        } finally {
+          btn.innerHTML = '<i class="fa-solid fa-microphone"></i>';
+        }
+      };
+      voiceRecorder.start();
+      btn.classList.add('recording');
+      btn.innerHTML = '<i class="fa-solid fa-stop"></i>';
+      status.textContent = 'Listening… click the mic again to stop.';
+    }
+
+    function renderCreatedPreview(strokes) {
+      const svg = document.getElementById('createPreview');
+      svg.replaceChildren();
+      strokes.forEach((stroke) => {
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', stroke.map((pt, i) => `${i ? 'L' : 'M'} ${(pt.x / 1.64 + 0.5) * 512} ${(pt.y / 1.64 + 0.5) * 512}`).join(' '));
+        path.setAttribute('fill', 'none'); path.setAttribute('stroke', '#111827'); path.setAttribute('stroke-width', '2.4');
+        path.setAttribute('stroke-linecap', 'round'); path.setAttribute('stroke-linejoin', 'round');
+        svg.appendChild(path);
+      });
+    }
+
+    async function runCreate(kind) {
+      const status = document.getElementById('createStatus');
+      const btn = document.getElementById(kind === 'describe' ? 'describeButton' : 'textButton');
+      const body = kind === 'describe'
+        ? { prompt: document.getElementById('describeInput').value }
+        : { text: document.getElementById('textInput').value, font: document.getElementById('fontSelect').value || 'futural' };
+      if (!robotServiceBase) { status.textContent = 'Create needs the local app (Run-RoboGenius.ps1).'; return; }
+      const label = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-1"></i>' + (kind === 'describe' ? 'Generating…' : 'Writing…');
+      status.textContent = kind === 'describe' ? 'AI Coloring is drawing it (about 10 s)…' : '';
+      try {
+        const res = await fetch(`${robotServiceBase}/api/create/${kind}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || 'Could not create the drawing');
+        createdStrokes = data.strokes.map((s) => s.map(([x, y]) => ({ x, y }))).filter((s) => s.length >= 2);
+        createdName = (kind === 'text' ? 'text-' : '') + ((data.info && data.info.subject) || 'drawing').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40);
+        renderCreatedPreview(createdStrokes);
+        document.getElementById('createResult').classList.remove('hidden');
+        status.textContent = `${createdStrokes.length} strokes · ${data.seconds}s · saved to Archive`;
+        loadArchive();
+      } catch (error) {
+        status.textContent = error.message;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = label;
+      }
+    }
+
+    function downloadCreated() {
+      if (!createdStrokes || !createdStrokes.length) return;
+      const blob = new Blob([buildGeneratedSvgMarkup(createdStrokes)], { type: 'image/svg+xml' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${createdName || 'drawing'}.svg`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    }
+
+    function plotCreated() {
+      if (!createdStrokes || !createdStrokes.length) return;
+      plotterState.pendingPhotoStrokes = createdStrokes.map((s) => s.map((pt) => ({ x: pt.x, y: pt.y })));
+      selectedPhotoName = createdName;
+      validateGeneratedSvg();
+      document.getElementById('activePresetLabel').textContent = createTab === 'text' ? 'Validated Text' : 'Validated Drawing';
+      document.getElementById('createStatus').textContent = plotterState.photoSvgValidated
+        ? 'Validated: press Play to plot on the digital twin, or connect the Dobot to draw.'
+        : document.getElementById('validationMessage').textContent;
+    }
+
     function setRailActive(id) {
       document.querySelectorAll('#studioRail button').forEach((b) => b.classList.toggle('active', b.id === id));
     }
@@ -4238,6 +4484,7 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
         document.getElementById('presetDrawer').classList.add('hidden');
         document.getElementById('cameraDrawer').classList.add('hidden');
         setRailActive('railArchive');
+        hideExtraDrawers();
         loadArchive();
       }
     }
@@ -4260,6 +4507,7 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
       document.getElementById('archiveDrawer').classList.add('hidden');
       document.getElementById('cameraDrawer').classList.add('hidden');
       setRailActive('railPhoto');
+      hideExtraDrawers();
       document.getElementById('photoWorkflowCard').scrollIntoView({ block: 'nearest' });
     }
 
@@ -4275,6 +4523,7 @@ print("Dobot Magician Classic 3D Hierarchy Created Successfully!")</pre>
         document.getElementById('archiveDrawer').classList.add('hidden');
         document.getElementById('cameraDrawer').classList.add('hidden');
         setRailActive('railPresets');
+        hideExtraDrawers();
       }
     }
 

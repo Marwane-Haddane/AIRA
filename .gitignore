@@ -12,6 +12,7 @@ models/*.tflite
 svg gen/models/*.onnx
 models/*.onnx
 models/*.part
+models/whisper-base/
 
 # Local config, temporary downloads, and generated output
 .env
@@ -27,3 +28,9 @@ research_notes/
 archive/
 version mohsin/
 test/
+
+# Desktop build output
+build/
+dist/
+*.spec
+.webview/

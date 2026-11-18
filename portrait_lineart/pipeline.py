@@ -2,7 +2,7 @@
 
 Stages
   1. orient + find the face (YuNet)
-  2. subject matte (alpha from the browser cutout, or rembg if available)
+  2. subject matte (alpha from the browser cutout, or U^2-Net human segmentation on onnxruntime)
   3. head-and-shoulders framing at a fixed working size
   4. semantic face parsing (BiSeNet, optional but recommended)
   5. line sources, each restricted to the regions where it is reliable:
@@ -121,16 +121,31 @@ class _Models:
 
     # -- background removal ------------------------------------------------- #
     def matte(self, rgb: np.ndarray) -> Optional[np.ndarray]:
+        """Person matte with U^2-Net human segmentation, run directly on onnxruntime.
+
+        Same pre/post-processing as rembg's u2net_human_seg session, without importing rembg
+        (its pymatting/numba import costs ~1 minute on a cold start)."""
         try:
             if self._rembg is None:
-                seg = find_model("u2net_human_seg.onnx")
-                if seg is not None:
-                    os.environ.setdefault("U2NET_HOME", str(seg.parent))
-                from rembg import new_session
-                self._rembg = new_session("u2net_human_seg")
-            from rembg import remove
-            out = remove(Image.fromarray(rgb), session=self._rembg, only_mask=True, post_process_mask=True)
-            return np.asarray(out.convert("L"))
+                path = find_model("u2net_human_seg.onnx")
+                if path is None:
+                    return None
+                import onnxruntime as ort
+                self._rembg = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+            sess = self._rembg
+            h, w = rgb.shape[:2]
+            im = np.asarray(Image.fromarray(rgb).resize((320, 320), Image.Resampling.LANCZOS), np.float32)
+            im = im / max(float(im.max()), 1e-6)
+            im = (im - np.array([0.485, 0.456, 0.406], np.float32)) / np.array([0.229, 0.224, 0.225], np.float32)
+            x = im.transpose(2, 0, 1)[None].astype(np.float32)
+            pred = sess.run(None, {sess.get_inputs()[0].name: x})[0][:, 0, :, :]
+            pred = (pred - pred.min()) / max(float(pred.max() - pred.min()), 1e-6)
+            mask = Image.fromarray((np.squeeze(pred) * 255).astype(np.uint8), mode="L").resize((w, h), Image.Resampling.LANCZOS)
+            m = np.asarray(mask)
+            # rembg post_process_mask: opening (disk 1), gaussian sigma 2, threshold
+            m = cv2.morphologyEx(m, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3)))
+            m = cv2.GaussianBlur(m.astype(np.float32), (0, 0), 2)
+            return np.where(m < 127, 0, 255).astype(np.uint8)
         except Exception:
             return None
 
@@ -735,7 +750,7 @@ def generate(image_bytes: bytes, params: Optional[PipelineParams] = None,
     if not has_alpha:
         m = MODELS_CACHE.matte(rgb)
         if m is not None:
-            alpha, matte_source = m, "rembg"
+            alpha, matte_source = m, "u2net"
         elif fallback_cutout:
             cut = load_rgba(fallback_cutout)[:, :, 3]
             alpha = cv2.resize(cut, (rgb.shape[1], rgb.shape[0]), interpolation=cv2.INTER_LINEAR)

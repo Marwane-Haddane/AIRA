@@ -115,7 +115,7 @@ def prepare_input(image_bytes: bytes, fallback_cutout: Optional[bytes] = None) -
     if not has_alpha:
         m = MODELS_CACHE.matte(rgb)
         if m is not None:
-            alpha, matte = m, "rembg"
+            alpha, matte = m, "u2net"
         elif fallback_cutout:
             cut = load_rgba(fallback_cutout)[:, :, 3]
             alpha = cv2.resize(cut, (rgb.shape[1], rgb.shape[0]), interpolation=cv2.INTER_LINEAR)
@@ -151,22 +151,24 @@ def _error_text(resp) -> str:
         return (resp.text or "")[:300]
 
 
-def call_cloudflare(rgb: np.ndarray, prompt: str = PROMPT, seed: Optional[int] = None,
+def call_cloudflare(rgb: Optional[np.ndarray], prompt: str = PROMPT, seed: Optional[int] = None,
                     timeout: float = 120.0) -> bytes:
     import requests
 
     c = config()
     if not (c["account"] and c["token"]):
         raise CloudAIError("AI Coloring is not set up: add CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN to .env")
-    small = cv2.resize(rgb, (INPUT_MAX, INPUT_MAX), interpolation=cv2.INTER_AREA)
     url = f"https://api.cloudflare.com/client/v4/accounts/{c['account']}/ai/run/{c['model']}"
-    data = {"prompt": prompt, "width": str(OUTPUT_SIZE), "height": str(OUTPUT_SIZE)}
+    # Workers AI FLUX.2 always takes multipart/form-data, even for text-only prompts
+    files = {"prompt": (None, prompt), "width": (None, str(OUTPUT_SIZE)), "height": (None, str(OUTPUT_SIZE))}
     if seed is not None:
-        data["seed"] = str(int(seed))
-    files = {"input_image_0": ("portrait.png", _png_bytes(small), "image/png")}
+        files["seed"] = (None, str(int(seed)))
+    if rgb is not None:
+        small = cv2.resize(rgb, (INPUT_MAX, INPUT_MAX), interpolation=cv2.INTER_AREA)
+        files["input_image_0"] = ("portrait.png", _png_bytes(small), "image/png")
     try:
         resp = requests.post(url, headers={"Authorization": f"Bearer {c['token']}"},
-                             data=data, files=files, timeout=timeout)
+                             files=files, timeout=timeout)
     except requests.RequestException as exc:
         raise CloudAIError(f"Cloudflare is unreachable: {exc}") from exc
     if resp.status_code == 429:

@@ -33,4 +33,12 @@ foreach ($m in $models) {
     Move-Item -LiteralPath $part -Destination $target -Force
 }
 
-Write-Host 'Clean Line is installed. Restart Run-RoboGenius.ps1 to use it.'
+# Offline voice input: Whisper base (CTranslate2 int8, ~145 MB)
+$whisperDir = Join-Path $modelDir 'whisper-base'
+if (-not (Test-Path -LiteralPath (Join-Path $whisperDir 'model.bin'))) {
+    Write-Host 'Downloading the 145 MB Whisper base voice model…'
+    & $pythonPath -c "from huggingface_hub import snapshot_download; snapshot_download('Systran/faster-whisper-base', local_dir=r'$whisperDir')"
+    if ($LASTEXITCODE -ne 0) { throw 'The Whisper base download did not complete. Re-run this setup script to try again.' }
+}
+
+Write-Host 'Clean Line, Create and voice are installed. Restart Run-RoboGenius.ps1 to use them.'
